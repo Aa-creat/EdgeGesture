@@ -37,6 +37,7 @@ import java.util.TimerTask;
 public class AccessibilityServiceGesture extends AccessibilityService {
     public Recents recents = new Recents();
     private SideGestureBar floatVitualTouchBar = null;
+    private com.omarea.gesture.ui.whitebar.ModernWhiteBar modernWhiteBar = null;
     private BroadcastReceiver configChanged = null;
     private BroadcastReceiver serviceDisable = null;
     private BroadcastReceiver screenStateReceiver;
@@ -321,6 +322,13 @@ public class AccessibilityServiceGesture extends AccessibilityService {
 
         setServiceInfo();
 
+        if (modernWhiteBar == null) {
+            com.omarea.gesture.core.config.AppConfigRepository repo = com.omarea.gesture.core.config.AppConfigRepository.Companion.getInstance(this);
+            com.omarea.gesture.core.dispatcher.ActionDispatcher dispatcher = new com.omarea.gesture.core.dispatcher.ActionDispatcher(this);
+            com.omarea.gesture.core.haptics.HapticsManager haptics = new com.omarea.gesture.core.haptics.HapticsManager(this);
+            modernWhiteBar = new com.omarea.gesture.ui.whitebar.ModernWhiteBar(this, repo, dispatcher, haptics);
+        }
+
         if (appSwitchBlackList == null) {
             appSwitchBlackList = getSharedPreferences(SpfConfig.AppSwitchBlackList, Context.MODE_PRIVATE);
         }
@@ -479,6 +487,11 @@ public class AccessibilityServiceGesture extends AccessibilityService {
     public void onDestroy() {
         if (floatVitualTouchBar != null) {
             floatVitualTouchBar.removeGestureView();
+        }
+
+        if (modernWhiteBar != null) {
+            modernWhiteBar.onDestroy();
+            modernWhiteBar = null;
         }
 
         if (configChanged != null) {

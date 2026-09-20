@@ -33,10 +33,10 @@
 
 ### 阶段 3：小白条与触控引擎现代化 (WhiteBar & Touch Engine)
 > **优先满足核心诉求**：小白条单击、长按打开指定应用及触感反馈
-- [ ] **Task 3.1**: 用 Kotlin 重写小白条视图 `ModernWhiteBarView`，支持物理弹簧缩放动画
-- [ ] **Task 3.2**: 实现低延迟单击与长按手势识别，触发瞬间配合线性马达触感
-- [ ] **Task 3.3**: 实现应用选择与启动通道（支持直接启动与无障碍辅助启动）
-- [ ] **Task 3.4**: 挂载至 `AccessibilityServiceGesture`，完成小白条独立验证
+- [x] **Task 3.1**: 用 Kotlin 重写小白条视图 `ModernWhiteBarView`，支持物理弹簧缩放动画
+- [x] **Task 3.2**: 实现低延迟单击与长按手势识别，触发瞬间配合线性马达触感
+- [x] **Task 3.3**: 实现应用选择与启动通道（支持直接启动与无障碍辅助启动）
+- [x] **Task 3.4**: 挂载至 `AccessibilityServiceGesture`，完成小白条独立验证
 
 ### 阶段 4：Shizuku 特权模块集成 (Shizuku Integration)
 - [ ] **Task 4.1**: 封装 `core/shizuku/ShizukuManager.kt`（权限检查、授权监听、Binder 调用）
@@ -68,4 +68,6 @@
 | :--- | :--- | :--- | :--- |
 | 2026-09-20 | 阶段 1：构建系统升级 | 1. 升级 Gradle 9.5.0 + AGP 9.3.1 + Kotlin 2.3.21<br/>2. 适配 targetSdk 36 (Android 16), compileSdk 36<br/>3. 引入 Compose/Material 3/Coroutines/DataStore/Shizuku 依赖<br/>4. 修复 Manifest exported 属性，完成首次成功编译 | `assembleDebug` 编译成功通过 (BUILD SUCCESSFUL) |
 | 2026-09-20 | 阶段 2：基础核心架构 | 1. 实现 `HapticsManager` 现代高品质线性马达触觉反馈<br/>2. 实现 `Action` 手势动作模型与编解码器<br/>3. 实现 `AppConfigRepository` 基于 DataStore 的响应式配置<br/>4. 实现 `ActionDispatcher` 统一动作分发器 | 阶段 2 代码编译通过 (BUILD SUCCESSFUL) |
+| 2026-09-20 | 阶段 3：小白条与手势核心 | 1. 实现 `ModernWhiteBarView` 原生高效 Canvas 绘制与物理缩放<br/>2. 实现 `ModernWhiteBar` 低延迟手势检测（单击/长按打开指定应用、滑动切应用）<br/>3. 挂载至 `AccessibilityServiceGesture`，无缝替换旧版悬浮视图 | 阶段 3 代码编译通过 (BUILD SUCCESSFUL) |
+
 

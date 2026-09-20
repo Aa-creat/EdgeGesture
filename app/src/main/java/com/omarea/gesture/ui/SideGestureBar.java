@@ -56,9 +56,9 @@ public class SideGestureBar {
                     anySide = true;
                     this.rightView = setRightView(context);
                 }
-                if (config.getBoolean(SpfConfig.LANDSCAPE_IOS_BAR, SpfConfig.LANDSCAPE_IOS_BAR_DEFAULT)) {
-                    this.iosBarView = new iOSWhiteBar(context, islandscape).getView();
-                }
+                // if (config.getBoolean(SpfConfig.LANDSCAPE_IOS_BAR, SpfConfig.LANDSCAPE_IOS_BAR_DEFAULT)) {
+                //     this.iosBarView = new iOSWhiteBar(context, islandscape).getView();
+                // }
             } else {
                 if (config.getBoolean(SpfConfig.THREE_SECTION_PORTRAIT, SpfConfig.THREE_SECTION_PORTRAIT_DEFAULT)) {
                     anySide = true;
@@ -75,9 +75,9 @@ public class SideGestureBar {
                     anySide = true;
                     this.rightView = setRightView(context);
                 }
-                if (config.getBoolean(SpfConfig.PORTRAIT_IOS_BAR, SpfConfig.PORTRAIT_IOS_BAR_DEFAULT)) {
-                    this.iosBarView = new iOSWhiteBar(context, islandscape).getView();
-                }
+                // if (config.getBoolean(SpfConfig.PORTRAIT_IOS_BAR, SpfConfig.PORTRAIT_IOS_BAR_DEFAULT)) {
+                //     this.iosBarView = new iOSWhiteBar(context, islandscape).getView();
+                // }
             }
             if (anySide && !config.getBoolean(SpfConfig.LOW_POWER_MODE, SpfConfig.LOW_POWER_MODE_DEFAULT)) {
                 this.visualFeedbackView = setVisualFeedbackView(context);
