@@ -20,6 +20,7 @@ import android.view.accessibility.AccessibilityWindowInfo;
 import android.view.inputmethod.InputMethodInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Toast;
+import androidx.core.content.ContextCompat;
 
 import com.omarea.gesture.remote.RemoteAPI;
 import com.omarea.gesture.ui.SideGestureBar;
@@ -382,9 +383,9 @@ public class AccessibilityServiceGesture extends AccessibilityService {
                 }
             };
 
-            registerReceiver(configChanged, new IntentFilter(getString(R.string.action_config_changed)));
-            registerReceiver(configChanged, new IntentFilter(getString(R.string.app_switch_changed)));
-            registerReceiver(configChanged, new IntentFilter(getString(R.string.action_adb_process)));
+            ContextCompat.registerReceiver(this, configChanged, new IntentFilter(getString(R.string.action_config_changed)), ContextCompat.RECEIVER_NOT_EXPORTED);
+            ContextCompat.registerReceiver(this, configChanged, new IntentFilter(getString(R.string.app_switch_changed)), ContextCompat.RECEIVER_NOT_EXPORTED);
+            ContextCompat.registerReceiver(this, configChanged, new IntentFilter(getString(R.string.action_adb_process)), ContextCompat.RECEIVER_NOT_EXPORTED);
         }
         if (serviceDisable == null) {
             serviceDisable = new BroadcastReceiver() {
@@ -396,7 +397,7 @@ public class AccessibilityServiceGesture extends AccessibilityService {
                     stopSelf();
                 }
             };
-            registerReceiver(serviceDisable, new IntentFilter(getString(R.string.action_service_disable)));
+            ContextCompat.registerReceiver(this, serviceDisable, new IntentFilter(getString(R.string.action_service_disable)), ContextCompat.RECEIVER_NOT_EXPORTED);
         }
         createPopupView(false);
 
