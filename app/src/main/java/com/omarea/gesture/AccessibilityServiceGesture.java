@@ -38,6 +38,7 @@ public class AccessibilityServiceGesture extends AccessibilityService {
     public Recents recents = new Recents();
     private SideGestureBar floatVitualTouchBar = null;
     private com.omarea.gesture.ui.whitebar.ModernWhiteBar modernWhiteBar = null;
+    private com.omarea.gesture.ui.gesture.ModernSideGestureBar modernSideGestureBar = null;
     private BroadcastReceiver configChanged = null;
     private BroadcastReceiver serviceDisable = null;
     private BroadcastReceiver screenStateReceiver;
@@ -327,6 +328,7 @@ public class AccessibilityServiceGesture extends AccessibilityService {
             com.omarea.gesture.core.dispatcher.ActionDispatcher dispatcher = new com.omarea.gesture.core.dispatcher.ActionDispatcher(this);
             com.omarea.gesture.core.haptics.HapticsManager haptics = new com.omarea.gesture.core.haptics.HapticsManager(this);
             modernWhiteBar = new com.omarea.gesture.ui.whitebar.ModernWhiteBar(this, repo, dispatcher, haptics);
+            modernSideGestureBar = new com.omarea.gesture.ui.gesture.ModernSideGestureBar(this, repo, dispatcher, haptics);
         }
 
         if (appSwitchBlackList == null) {
@@ -438,6 +440,10 @@ public class AccessibilityServiceGesture extends AccessibilityService {
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
 
+        if (modernSideGestureBar != null) {
+            modernSideGestureBar.onConfigurationChanged();
+        }
+
         if (floatVitualTouchBar != null && newConfig != null) {
             // 关闭常用应用面板
             QuickPanel.close();
@@ -492,6 +498,11 @@ public class AccessibilityServiceGesture extends AccessibilityService {
         if (modernWhiteBar != null) {
             modernWhiteBar.onDestroy();
             modernWhiteBar = null;
+        }
+
+        if (modernSideGestureBar != null) {
+            modernSideGestureBar.onDestroy();
+            modernSideGestureBar = null;
         }
 
         if (configChanged != null) {

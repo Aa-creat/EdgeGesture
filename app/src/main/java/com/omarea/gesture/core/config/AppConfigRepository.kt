@@ -12,7 +12,6 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.omarea.gesture.core.model.Action
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -38,9 +37,26 @@ data class WhiteBarConfig(
     val shizukuEnabled: Boolean = false
 )
 
+data class SideGestureConfig(
+    val leftEnabled: Boolean = false,
+    val leftWidthDp: Float = 18f,
+    val leftHeightPercent: Float = 0.5f,
+    val leftYOffsetPercent: Float = 0.25f,
+    val leftSlideAction: Action = Action.Back,
+    val leftHoverAction: Action = Action.SwitchPreviousApp,
+
+    val rightEnabled: Boolean = false,
+    val rightWidthDp: Float = 18f,
+    val rightHeightPercent: Float = 0.5f,
+    val rightYOffsetPercent: Float = 0.25f,
+    val rightSlideAction: Action = Action.Back,
+    val rightHoverAction: Action = Action.SwitchPreviousApp
+)
+
 class AppConfigRepository(private val context: Context, scope: CoroutineScope = CoroutineScope(Dispatchers.IO)) {
 
     companion object {
+        // 小白条配置键
         private val KEY_WB_ENABLED = booleanPreferencesKey("wb_enabled")
         private val KEY_WB_WIDTH = floatPreferencesKey("wb_width")
         private val KEY_WB_HEIGHT = floatPreferencesKey("wb_height")
@@ -58,6 +74,21 @@ class AppConfigRepository(private val context: Context, scope: CoroutineScope = 
 
         private val KEY_HAPTICS_ENABLED = booleanPreferencesKey("haptics_enabled")
         private val KEY_SHIZUKU_ENABLED = booleanPreferencesKey("shizuku_enabled")
+
+        // 边缘手势配置键
+        private val KEY_SIDE_LEFT_ENABLED = booleanPreferencesKey("side_left_enabled")
+        private val KEY_SIDE_LEFT_WIDTH = floatPreferencesKey("side_left_width")
+        private val KEY_SIDE_LEFT_HEIGHT = floatPreferencesKey("side_left_height")
+        private val KEY_SIDE_LEFT_OFFSET = floatPreferencesKey("side_left_offset")
+        private val KEY_SIDE_LEFT_SLIDE = stringPreferencesKey("side_left_slide")
+        private val KEY_SIDE_LEFT_HOVER = stringPreferencesKey("side_left_hover")
+
+        private val KEY_SIDE_RIGHT_ENABLED = booleanPreferencesKey("side_right_enabled")
+        private val KEY_SIDE_RIGHT_WIDTH = floatPreferencesKey("side_right_width")
+        private val KEY_SIDE_RIGHT_HEIGHT = floatPreferencesKey("side_right_height")
+        private val KEY_SIDE_RIGHT_OFFSET = floatPreferencesKey("side_right_offset")
+        private val KEY_SIDE_RIGHT_SLIDE = stringPreferencesKey("side_right_slide")
+        private val KEY_SIDE_RIGHT_HOVER = stringPreferencesKey("side_right_hover")
 
         @Volatile
         private var INSTANCE: AppConfigRepository? = null
@@ -88,6 +119,24 @@ class AppConfigRepository(private val context: Context, scope: CoroutineScope = 
             shizukuEnabled = pref[KEY_SHIZUKU_ENABLED] ?: false
         )
     }.stateIn(scope, SharingStarted.Eagerly, WhiteBarConfig())
+
+    val sideGestureConfig: StateFlow<SideGestureConfig> = context.dataStore.data.map { pref ->
+        SideGestureConfig(
+            leftEnabled = pref[KEY_SIDE_LEFT_ENABLED] ?: false,
+            leftWidthDp = pref[KEY_SIDE_LEFT_WIDTH] ?: 18f,
+            leftHeightPercent = pref[KEY_SIDE_LEFT_HEIGHT] ?: 0.5f,
+            leftYOffsetPercent = pref[KEY_SIDE_LEFT_OFFSET] ?: 0.25f,
+            leftSlideAction = Action.fromString(pref[KEY_SIDE_LEFT_SLIDE] ?: Action.toString(Action.Back)),
+            leftHoverAction = Action.fromString(pref[KEY_SIDE_LEFT_HOVER] ?: Action.toString(Action.SwitchPreviousApp)),
+
+            rightEnabled = pref[KEY_SIDE_RIGHT_ENABLED] ?: false,
+            rightWidthDp = pref[KEY_SIDE_RIGHT_WIDTH] ?: 18f,
+            rightHeightPercent = pref[KEY_SIDE_RIGHT_HEIGHT] ?: 0.5f,
+            rightYOffsetPercent = pref[KEY_SIDE_RIGHT_OFFSET] ?: 0.25f,
+            rightSlideAction = Action.fromString(pref[KEY_SIDE_RIGHT_SLIDE] ?: Action.toString(Action.Back)),
+            rightHoverAction = Action.fromString(pref[KEY_SIDE_RIGHT_HOVER] ?: Action.toString(Action.SwitchPreviousApp))
+        )
+    }.stateIn(scope, SharingStarted.Eagerly, SideGestureConfig())
 
     suspend fun updateWhiteBarEnabled(enabled: Boolean) {
         context.dataStore.edit { it[KEY_WB_ENABLED] = enabled }
@@ -139,5 +188,27 @@ class AppConfigRepository(private val context: Context, scope: CoroutineScope = 
 
     suspend fun updateShizukuEnabled(enabled: Boolean) {
         context.dataStore.edit { it[KEY_SHIZUKU_ENABLED] = enabled }
+    }
+
+    suspend fun updateSideLeftEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[KEY_SIDE_LEFT_ENABLED] = enabled }
+    }
+
+    suspend fun updateSideRightEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[KEY_SIDE_RIGHT_ENABLED] = enabled }
+    }
+
+    suspend fun updateSideLeftActions(slideAction: Action, hoverAction: Action) {
+        context.dataStore.edit {
+            it[KEY_SIDE_LEFT_SLIDE] = Action.toString(slideAction)
+            it[KEY_SIDE_LEFT_HOVER] = Action.toString(hoverAction)
+        }
+    }
+
+    suspend fun updateSideRightActions(slideAction: Action, hoverAction: Action) {
+        context.dataStore.edit {
+            it[KEY_SIDE_RIGHT_SLIDE] = Action.toString(slideAction)
+            it[KEY_SIDE_RIGHT_HOVER] = Action.toString(hoverAction)
+        }
     }
 }

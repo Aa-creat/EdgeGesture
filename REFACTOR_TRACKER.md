@@ -44,10 +44,10 @@
 - [x] **Task 4.3**: 废弃并清理旧版 `adb_process` 目录及本地 HTTP 服务 (`RemoteAPI.java`)
 
 ### 阶段 5：两侧边缘手势与防冲突适配 (Side & Bottom Gestures)
-- [ ] **Task 5.1**: 现代化重构两侧边缘手势触控条（`SideGestureBar.kt`）
-- [ ] **Task 5.2**: 现代化重构三段式手势（`ThreeSectionView.kt`）
-- [ ] **Task 5.3**: 适配 Android 10+ `setSystemGestureExclusionRects()` 系统手势防冲突
-- [ ] **Task 5.4**: 适配现代 `WindowMetrics`，支持横竖屏旋转与折叠屏/平板
+- [x] **Task 5.1**: 现代化重构两侧边缘手势触控条（`ModernSideGestureBar.kt`）
+- [x] **Task 5.2**: 现代化重构三段式手势与内滑/悬停多手势判定
+- [x] **Task 5.3**: 适配 Android 10+ `setSystemGestureExclusionRects()` 系统手势防冲突
+- [x] **Task 5.4**: 适配现代 `WindowMetrics`，支持横竖屏旋转与折叠屏/平板
 
 ### 阶段 6：Compose 设置界面与可视化调节 (Modern Settings UI)
 - [ ] **Task 6.1**: 搭建 Compose + Material 3 主设置界面框架（支持 Monet 动态主题色）
@@ -70,6 +70,7 @@
 | 2026-09-20 | 阶段 2：基础核心架构 | 1. 实现 `HapticsManager` 现代高品质线性马达触觉反馈<br/>2. 实现 `Action` 手势动作模型与编解码器<br/>3. 实现 `AppConfigRepository` 基于 DataStore 的响应式配置<br/>4. 实现 `ActionDispatcher` 统一动作分发器 | 阶段 2 代码编译通过 (BUILD SUCCESSFUL) |
 | 2026-09-20 | 阶段 3：小白条与手势核心 | 1. 实现 `ModernWhiteBarView` 原生高效 Canvas 绘制与物理缩放<br/>2. 实现 `ModernWhiteBar` 低延迟手势检测（单击/长按打开指定应用、滑动切应用）<br/>3. 挂载至 `AccessibilityServiceGesture`，无缝替换旧版悬浮视图 | 阶段 3 代码编译通过 (BUILD SUCCESSFUL) |
 | 2026-09-21 | 阶段 4：Shizuku 模块集成 | 1. 封装 `ShizukuManager`，支持 Binder 监听、权限申请与特权 Shell 执行<br/>2. `ActionDispatcher` 接入特权启动与 Shell 调度，实现安全降级<br/>3. 彻底移除旧版 `adb_process` 目录及本地 HTTP 服务，`AdbProcessExtractor` 与 `RemoteAPI` 迁移至安全桩代码 | 阶段 4 代码编译通过 (BUILD SUCCESSFUL) |
+| 2026-09-21 | 阶段 5：两侧边缘手势适配 | 1. 实现 `ModernSideGestureBar` 现代化两侧触控条<br/>2. 适配 Android 10+ `setSystemGestureExclusionRects` 防止原生侧滑冲突<br/>3. 适配现代 `WindowMetrics`，精准响应横竖屏旋转与窗口尺寸变更 | 阶段 5 代码编译通过 (BUILD SUCCESSFUL) |
 
 
 
