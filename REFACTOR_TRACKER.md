@@ -50,11 +50,11 @@
 - [x] **Task 5.4**: 适配现代 `WindowMetrics`，支持横竖屏旋转与折叠屏/平板
 
 ### 阶段 6：Compose 设置界面与可视化调节 (Modern Settings UI)
-- [ ] **Task 6.1**: 搭建 Compose + Material 3 主设置界面框架（支持 Monet 动态主题色）
-- [ ] **Task 6.2**: 小白条配置页（开关、尺寸、颜色、单击/长按动作绑定、触感调节）
-- [ ] **Task 6.3**: 现代应用选择器弹窗（带应用图标、实时搜索）
-- [ ] **Task 6.4**: Shizuku 状态卡片与一键引导授权组件
-- [ ] **Task 6.5**: 边缘手势可视化调节面板
+- [x] **Task 6.1**: 搭建 Compose + Material 3 主设置界面框架（支持 Monet 动态主题色）
+- [x] **Task 6.2**: 小白条配置页（开关、尺寸、颜色、单击/长按动作绑定、触感调节）
+- [x] **Task 6.3**: 现代应用选择器弹窗（带应用图标、实时搜索）
+- [x] **Task 6.4**: Shizuku 状态卡片与一键引导授权组件
+- [x] **Task 6.5**: 边缘手势可视化调节面板
 
 ### 阶段 7：代码清理与全功能验证 (Cleanup & Verification)
 - [ ] **Task 7.1**: 清理遗留 Java 类、无用资源与过时权限声明
@@ -71,6 +71,8 @@
 | 2026-09-20 | 阶段 3：小白条与手势核心 | 1. 实现 `ModernWhiteBarView` 原生高效 Canvas 绘制与物理缩放<br/>2. 实现 `ModernWhiteBar` 低延迟手势检测（单击/长按打开指定应用、滑动切应用）<br/>3. 挂载至 `AccessibilityServiceGesture`，无缝替换旧版悬浮视图 | 阶段 3 代码编译通过 (BUILD SUCCESSFUL) |
 | 2026-09-21 | 阶段 4：Shizuku 模块集成 | 1. 封装 `ShizukuManager`，支持 Binder 监听、权限申请与特权 Shell 执行<br/>2. `ActionDispatcher` 接入特权启动与 Shell 调度，实现安全降级<br/>3. 彻底移除旧版 `adb_process` 目录及本地 HTTP 服务，`AdbProcessExtractor` 与 `RemoteAPI` 迁移至安全桩代码 | 阶段 4 代码编译通过 (BUILD SUCCESSFUL) |
 | 2026-09-21 | 阶段 5：两侧边缘手势适配 | 1. 实现 `ModernSideGestureBar` 现代化两侧触控条<br/>2. 适配 Android 10+ `setSystemGestureExclusionRects` 防止原生侧滑冲突<br/>3. 适配现代 `WindowMetrics`，精准响应横竖屏旋转与窗口尺寸变更 | 阶段 5 代码编译通过 (BUILD SUCCESSFUL) |
+| 2026-09-21 | 阶段 6：Compose 设置界面 | 1. 采用 Material 3 + Compose 重写 `SettingsActivity`<br/>2. 实现小白条配置页（实时外观预览、尺寸滑块、手势映射）<br/>3. 实现带图标与实时搜索的应用选择弹窗 `AppPickerDialog`<br/>4. 实现两侧边缘手势配置页与 Shizuku 状态卡片 | 阶段 6 代码编译通过 (BUILD SUCCESSFUL) |
+
 
 
 
