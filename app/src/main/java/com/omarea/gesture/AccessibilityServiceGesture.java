@@ -23,7 +23,6 @@ import android.widget.Toast;
 import androidx.core.content.ContextCompat;
 
 import com.omarea.gesture.remote.RemoteAPI;
-import com.omarea.gesture.ui.SideGestureBar;
 import com.omarea.gesture.ui.QuickPanel;
 import com.omarea.gesture.util.GlobalState;
 import com.omarea.gesture.util.Recents;
@@ -37,7 +36,6 @@ import java.util.TimerTask;
 
 public class AccessibilityServiceGesture extends AccessibilityService {
     public Recents recents = new Recents();
-    private SideGestureBar floatVitualTouchBar = null;
     private com.omarea.gesture.ui.whitebar.ModernWhiteBar modernWhiteBar = null;
     private com.omarea.gesture.ui.gesture.ModernSideGestureBar modernSideGestureBar = null;
     private BroadcastReceiver configChanged = null;
@@ -45,15 +43,6 @@ public class AccessibilityServiceGesture extends AccessibilityService {
     private BroadcastReceiver screenStateReceiver;
     private SharedPreferences appSwitchBlackList;
     private BatteryReceiver batteryReceiver;
-
-    private boolean removeGestureView() {
-        if (floatVitualTouchBar != null) {
-            floatVitualTouchBar.removeGestureView();
-            floatVitualTouchBar = null;
-            return true;
-        }
-        return false;
-    }
 
     private boolean ignored(String packageName) {
         return recents.inputMethods.contains(packageName);
@@ -432,7 +421,6 @@ public class AccessibilityServiceGesture extends AccessibilityService {
 
     @Override
     public boolean onUnbind(Intent intent) {
-        removeGestureView();
         return super.onUnbind(intent);
     }
 
@@ -448,23 +436,6 @@ public class AccessibilityServiceGesture extends AccessibilityService {
         if (modernSideGestureBar != null) {
             modernSideGestureBar.onConfigurationChanged();
         }
-
-        if (floatVitualTouchBar != null && newConfig != null) {
-            // 关闭常用应用面板
-            QuickPanel.close();
-
-            GlobalState.isLandscapf = newConfig.orientation == Configuration.ORIENTATION_LANDSCAPE;
-
-            // 如果分辨率变了，那就重新创建手势区域
-            WindowManager wm = (WindowManager) getSystemService(Context.WINDOW_SERVICE);
-            Point point = new Point();
-            wm.getDefaultDisplay().getRealSize(point);
-            if (point.x != GlobalState.displayWidth || point.y != GlobalState.displayHeight) {
-                GlobalState.displayWidth = point.x;
-                GlobalState.displayHeight = point.y;
-                createPopupView(true);
-            }
-        }
     }
 
     private void createPopupView(boolean delayed) {
@@ -473,7 +444,6 @@ public class AccessibilityServiceGesture extends AccessibilityService {
         new android.os.Handler().postDelayed(new Runnable(){
             @Override
             public void run() {
-                removeGestureView();
                 setServiceInfo();
                 if (modernWhiteBar != null) {
                     modernWhiteBar.refreshTestMode();
@@ -501,10 +471,6 @@ public class AccessibilityServiceGesture extends AccessibilityService {
 
     @Override
     public void onDestroy() {
-        if (floatVitualTouchBar != null) {
-            floatVitualTouchBar.removeGestureView();
-        }
-
         if (modernWhiteBar != null) {
             modernWhiteBar.onDestroy();
             modernWhiteBar = null;

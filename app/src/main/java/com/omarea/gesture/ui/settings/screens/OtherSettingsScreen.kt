@@ -8,14 +8,20 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -46,12 +52,11 @@ fun OtherSettingsScreen(
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
-
-
-        // 2. 游戏优化与防误触
+        // 1. 游戏优化与防误触
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            shape = MaterialTheme.shapes.large,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(
@@ -72,7 +77,10 @@ fun OtherSettingsScreen(
                     }
                     Switch(
                         checked = otherConfig.gameOptimization,
-                        onCheckedChange = { scope.launch { configRepository.updateGameOptimization(it) } }
+                        onCheckedChange = { scope.launch { configRepository.updateGameOptimization(it) } },
+                        thumbContent = if (otherConfig.gameOptimization) {
+                            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
+                        } else null
                     )
                 }
             }
@@ -80,10 +88,11 @@ fun OtherSettingsScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 3. 应用切换黑名单
+        // 2. 应用切换黑名单
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            shape = MaterialTheme.shapes.large,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(
@@ -102,7 +111,7 @@ fun OtherSettingsScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                         )
                     }
-                    Button(onClick = { showBlacklistPicker = true }) {
+                    FilledTonalButton(onClick = { showBlacklistPicker = true }) {
                         Text("选择应用")
                     }
                 }
@@ -111,10 +120,11 @@ fun OtherSettingsScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 4. 系统优化与功耗
+        // 3. 系统优化与功耗
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            shape = MaterialTheme.shapes.large,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
@@ -138,7 +148,10 @@ fun OtherSettingsScreen(
                     }
                     Switch(
                         checked = otherConfig.lowPowerMode,
-                        onCheckedChange = { scope.launch { configRepository.updateLowPowerMode(it) } }
+                        onCheckedChange = { scope.launch { configRepository.updateLowPowerMode(it) } },
+                        thumbContent = if (otherConfig.lowPowerMode) {
+                            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
+                        } else null
                     )
                 }
 
@@ -159,7 +172,10 @@ fun OtherSettingsScreen(
                     }
                     Switch(
                         checked = otherConfig.windowWatch,
-                        onCheckedChange = { scope.launch { configRepository.updateWindowWatch(it) } }
+                        onCheckedChange = { scope.launch { configRepository.updateWindowWatch(it) } },
+                        thumbContent = if (otherConfig.windowWatch) {
+                            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
+                        } else null
                     )
                 }
 
@@ -180,7 +196,10 @@ fun OtherSettingsScreen(
                     }
                     Switch(
                         checked = otherConfig.hideStartIcon,
-                        onCheckedChange = { scope.launch { configRepository.updateHideStartIcon(it) } }
+                        onCheckedChange = { scope.launch { configRepository.updateHideStartIcon(it) } },
+                        thumbContent = if (otherConfig.hideStartIcon) {
+                            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
+                        } else null
                     )
                 }
             }

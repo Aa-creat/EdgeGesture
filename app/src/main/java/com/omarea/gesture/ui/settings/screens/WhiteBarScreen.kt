@@ -15,14 +15,18 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -114,7 +118,8 @@ fun WhiteBarScreen(configRepository: AppConfigRepository) {
         // 1. 总开关与横竖屏卡片
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            shape = MaterialTheme.shapes.large,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(
@@ -128,7 +133,10 @@ fun WhiteBarScreen(configRepository: AppConfigRepository) {
                     )
                     Switch(
                         checked = config.enabled,
-                        onCheckedChange = { scope.launch { configRepository.updateWhiteBarEnabled(it) } }
+                        onCheckedChange = { scope.launch { configRepository.updateWhiteBarEnabled(it) } },
+                        thumbContent = if (config.enabled) {
+                            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
+                        } else null
                     )
                 }
 
@@ -159,7 +167,8 @@ fun WhiteBarScreen(configRepository: AppConfigRepository) {
         // 2. 尺寸与热区调节卡片
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            shape = MaterialTheme.shapes.large,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
         ) {
             Column(
                 modifier = Modifier
@@ -251,7 +260,10 @@ fun WhiteBarScreen(configRepository: AppConfigRepository) {
                     }
                     Switch(
                         checked = config.burnInProtection,
-                        onCheckedChange = { scope.launch { configRepository.updateWhiteBarBurnInProtection(it) } }
+                        onCheckedChange = { scope.launch { configRepository.updateWhiteBarBurnInProtection(it) } },
+                        thumbContent = if (config.burnInProtection) {
+                            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
+                        } else null
                     )
                 }
             }
@@ -262,7 +274,8 @@ fun WhiteBarScreen(configRepository: AppConfigRepository) {
         // 3. 颜色与电量指示卡片
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            shape = MaterialTheme.shapes.large,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
         ) {
             Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
                 Text(text = "外观色彩与电量", style = MaterialTheme.typography.titleMedium)
@@ -282,7 +295,10 @@ fun WhiteBarScreen(configRepository: AppConfigRepository) {
                     }
                     Switch(
                         checked = config.batteryLevelEnabled,
-                        onCheckedChange = { scope.launch { configRepository.updateWhiteBarBatteryLevel(it) } }
+                        onCheckedChange = { scope.launch { configRepository.updateWhiteBarBatteryLevel(it) } },
+                        thumbContent = if (config.batteryLevelEnabled) {
+                            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
+                        } else null
                     )
                 }
 
@@ -302,7 +318,10 @@ fun WhiteBarScreen(configRepository: AppConfigRepository) {
                         }
                         Switch(
                             checked = config.batterySmoothGradient,
-                            onCheckedChange = { scope.launch { configRepository.updateWhiteBarBatterySmoothGradient(it) } }
+                            onCheckedChange = { scope.launch { configRepository.updateWhiteBarBatterySmoothGradient(it) } },
+                            thumbContent = if (config.batterySmoothGradient) {
+                                { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
+                            } else null
                         )
                     }
                 }
@@ -362,7 +381,8 @@ fun WhiteBarScreen(configRepository: AppConfigRepository) {
         // 4. 核心手势动作配置卡片
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            shape = MaterialTheme.shapes.large,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
         ) {
             Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
                 Text(text = "手势动作映射", style = MaterialTheme.typography.titleMedium)

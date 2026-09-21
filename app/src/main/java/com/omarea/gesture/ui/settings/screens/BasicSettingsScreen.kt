@@ -11,10 +11,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Warning
@@ -25,6 +27,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -81,9 +84,10 @@ fun BasicSettingsScreen(
                     }
                     context.startActivity(intent)
                 },
+            shape = MaterialTheme.shapes.large,
             colors = CardDefaults.cardColors(
                 containerColor = if (isAccessibilityEnabled)
-                    MaterialTheme.colorScheme.surfaceVariant
+                    MaterialTheme.colorScheme.surfaceContainer
                 else
                     MaterialTheme.colorScheme.errorContainer
             )
@@ -107,7 +111,7 @@ fun BasicSettingsScreen(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = if (isAccessibilityEnabled) "服务已开启" else "服务未启用，点击前往开启",
+                        text = if (isAccessibilityEnabled) "服务已开启并正常运行" else "服务未启用，点击前往系统设置开启",
                         style = MaterialTheme.typography.bodySmall,
                         color = if (isAccessibilityEnabled)
                             MaterialTheme.colorScheme.onSurfaceVariant
@@ -123,7 +127,8 @@ fun BasicSettingsScreen(
         // 2. 悬停时长调节卡片
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            shape = MaterialTheme.shapes.large,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(
@@ -156,7 +161,8 @@ fun BasicSettingsScreen(
         // 3. 震动反馈卡片
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            shape = MaterialTheme.shapes.large,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
@@ -178,7 +184,10 @@ fun BasicSettingsScreen(
                     }
                     Switch(
                         checked = basicConfig.vibratorUseSystem,
-                        onCheckedChange = { scope.launch { configRepository.updateVibratorUseSystem(it) } }
+                        onCheckedChange = { scope.launch { configRepository.updateVibratorUseSystem(it) } },
+                        thumbContent = if (basicConfig.vibratorUseSystem) {
+                            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
+                        } else null
                     )
                 }
 
@@ -229,7 +238,8 @@ fun BasicSettingsScreen(
         // 4. 扩展模式 (Shizuku) 卡片
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            shape = MaterialTheme.shapes.large,
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(
