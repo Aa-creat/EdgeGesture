@@ -1,6 +1,7 @@
 package com.omarea.gesture.ui.settings.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -328,42 +329,71 @@ fun WhiteBarScreen(configRepository: AppConfigRepository) {
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
 
-                // 调色盘选择入口
+                // 色彩与调色盘入口卡片式布局
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .clip(MaterialTheme.shapes.medium)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                         .clickable { showColorPicker = true }
-                        .padding(vertical = 4.dp),
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    // 模拟小白条胶囊预览（展示实际颜色与透明度）
                     Box(
                         modifier = Modifier
-                            .size(36.dp)
+                            .width(44.dp)
+                            .height(18.dp)
                             .clip(CircleShape)
-                            .background(Color(config.color))
+                            .background(Color(config.color).copy(alpha = config.alpha))
+                            .border(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                                shape = CircleShape
+                            )
                     )
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(14.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("小白条颜色与透明度", style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            text = "小白条色彩",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("色号: ", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            ColorHexText(hexText = String.format("#%06X", (0xFFFFFF and config.color.toInt())))
-                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "透明度: ${(config.alpha * 100).toInt()}%",
+                                text = "色号: ",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+                            ColorHexText(hexText = String.format("#%06X", (0xFFFFFF and config.color.toInt())))
                         }
                     }
-                    FilledTonalButton(onClick = { showColorPicker = true }) {
-                        Text("打开调色盘")
+                    FilledTonalButton(
+                        onClick = { showColorPicker = true },
+                        shape = CircleShape
+                    ) {
+                        Text("调色盘")
                     }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
-                // 不透明度快速调节滑块（0% ~ 100%）
-                Text("不透明度: ${(config.alpha * 100).toInt()}%", style = MaterialTheme.typography.bodySmall)
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // 不透明度独立调节滑块
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "不透明度",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = "${(config.alpha * 100).toInt()}%",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
                 Slider(
                     value = config.alpha,
                     onValueChange = {

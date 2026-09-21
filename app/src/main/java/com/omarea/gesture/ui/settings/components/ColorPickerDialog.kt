@@ -75,17 +75,19 @@ fun ColorPickerDialog(
     val presetColors = remember {
         listOf(
             0xFFFFFFFF.toInt() to "纯白",
-            0xFF222222.toInt() to "深黑",
-            0xFF888888.toInt() to "素灰",
-            0xFF138ED6.toInt() to "科技蓝",
-            0xFF00B9C2.toInt() to "青蓝",
-            0xFF00D5D9.toInt() to "湖青",
-            0xFF02D98D.toInt() to "翠绿",
-            0xFF87CB00.toInt() to "柠檬黄",
-            0xFFFC8A1B.toInt() to "暖橙",
-            0xFFF9592F.toInt() to "赤红",
-            0xFF9C27B0.toInt() to "雅紫",
-            0xFF673AB7.toInt() to "深紫"
+            0xFFF5F5F7.toInt() to "象牙白",
+            0xFF1D1D1F.toInt() to "深空黑",
+            0xFF607D8B.toInt() to "雾霾蓝灰",
+            0xFF4DD0E1.toInt() to "极光青",
+            0xFF007AFF.toInt() to "经典蓝",
+            0xFF80CBC4.toInt() to "薄荷绿",
+            0xFF81C784.toInt() to "抹茶绿",
+            0xFFFFB74D.toInt() to "暖杏黄",
+            0xFFFF7043.toInt() to "珊瑚橙",
+            0xFFF06292.toInt() to "暮云粉",
+            0xFF9575CD.toInt() to "薰衣草紫",
+            0xFF5C6BC0.toInt() to "莫兰迪紫",
+            0xFFB0BEC5.toInt() to "冷霜银"
         )
     }
 
@@ -133,7 +135,7 @@ fun ColorPickerDialog(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // 色号输入框（支持 #ffffff, #138ED6, #0001 等，直接显示彩色字体）
+                // 色号输入框（直接显示彩色字体）
                 OutlinedTextField(
                     value = hexText,
                     onValueChange = { newHex ->
@@ -149,7 +151,7 @@ fun ColorPickerDialog(
                             }
                         }
                     },
-                    label = { Text("输入色号 (如 #ffffff, #138ED6, #0001)") },
+                    label = { Text("输入色号 (如 #FFFFFF, #4DD0E1)") },
                     trailingIcon = {
                         ColorHexText(
                             hexText = hexText,
