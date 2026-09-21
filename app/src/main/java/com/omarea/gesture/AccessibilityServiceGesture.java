@@ -140,6 +140,10 @@ public class AccessibilityServiceGesture extends AccessibilityService {
             }
         }
         else if (eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED || eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            if (GlobalState.testMode && packageName != null && !packageName.toString().equals(getPackageName())) {
+                GlobalState.testMode = false;
+                createPopupView(false);
+            }
             if (Gesture.config.getBoolean(SpfConfig.WINDOW_WATCH, SpfConfig.WINDOW_WATCH_DEFAULT)) {
                 List<AccessibilityWindowInfo> windowInfos = getWindows();
                 AccessibilityWindowInfo lastWindow = null;
@@ -327,7 +331,7 @@ public class AccessibilityServiceGesture extends AccessibilityService {
         if (modernWhiteBar == null) {
             com.omarea.gesture.core.config.AppConfigRepository repo = com.omarea.gesture.core.config.AppConfigRepository.Companion.getInstance(this);
             com.omarea.gesture.core.dispatcher.ActionDispatcher dispatcher = new com.omarea.gesture.core.dispatcher.ActionDispatcher(this);
-            com.omarea.gesture.core.haptics.HapticsManager haptics = new com.omarea.gesture.core.haptics.HapticsManager(this);
+            com.omarea.gesture.core.haptics.HapticsManager haptics = new com.omarea.gesture.core.haptics.HapticsManager(this, repo);
             modernWhiteBar = new com.omarea.gesture.ui.whitebar.ModernWhiteBar(this, repo, dispatcher, haptics);
             modernSideGestureBar = new com.omarea.gesture.ui.gesture.ModernSideGestureBar(this, repo, dispatcher, haptics);
         }
@@ -471,7 +475,12 @@ public class AccessibilityServiceGesture extends AccessibilityService {
             public void run() {
                 removeGestureView();
                 setServiceInfo();
-                floatVitualTouchBar = new SideGestureBar(context);
+                if (modernWhiteBar != null) {
+                    modernWhiteBar.refreshTestMode();
+                }
+                if (modernSideGestureBar != null) {
+                    modernSideGestureBar.refreshTestMode();
+                }
             }
         }, (delayed ? 500 : 0));
     }

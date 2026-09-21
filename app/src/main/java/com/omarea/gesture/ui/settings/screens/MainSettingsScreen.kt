@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PlayArrow
@@ -49,10 +50,16 @@ fun MainSettingsScreen(
 ) {
     val context = LocalContext.current
     var selectedTab by remember { mutableIntStateOf(0) }
-    var isAccessibilityEnabled by remember { mutableStateOf(true) }
-
-    LaunchedEffect(Unit) {
-        isAccessibilityEnabled = checkAccessibilityServiceEnabled(context)
+    var isAccessibilityEnabled by remember { mutableStateOf(checkAccessibilityServiceEnabled(context)) }
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                isAccessibilityEnabled = checkAccessibilityServiceEnabled(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     Scaffold(
@@ -66,20 +73,26 @@ fun MainSettingsScreen(
                 NavigationBarItem(
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
-                    icon = { Icon(Icons.Default.PlayArrow, contentDescription = "小白条") },
-                    label = { Text("小白条") }
+                    icon = { Icon(Icons.Default.Build, contentDescription = "基础设置") },
+                    label = { Text("基础设置") }
                 )
                 NavigationBarItem(
                     selected = selectedTab == 1,
                     onClick = { selectedTab = 1 },
-                    icon = { Icon(Icons.Default.Menu, contentDescription = "边缘手势") },
-                    label = { Text("边缘手势") }
+                    icon = { Icon(Icons.Default.PlayArrow, contentDescription = "小白条") },
+                    label = { Text("小白条") }
                 )
                 NavigationBarItem(
                     selected = selectedTab == 2,
                     onClick = { selectedTab = 2 },
-                    icon = { Icon(Icons.Default.Settings, contentDescription = "Shizuku") },
-                    label = { Text("Shizuku") }
+                    icon = { Icon(Icons.Default.Menu, contentDescription = "边缘手势") },
+                    label = { Text("边缘手势") }
+                )
+                NavigationBarItem(
+                    selected = selectedTab == 3,
+                    onClick = { selectedTab = 3 },
+                    icon = { Icon(Icons.Default.Settings, contentDescription = "其它设置") },
+                    label = { Text("其它设置") }
                 )
             }
         }
@@ -89,46 +102,12 @@ fun MainSettingsScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // 无障碍服务状态提醒横幅
-            if (!isAccessibilityEnabled) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                        .clickable {
-                            val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
-                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            }
-                            context.startActivity(intent)
-                        },
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Default.Info,
-                            contentDescription = "Warning",
-                            tint = MaterialTheme.colorScheme.error
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "无障碍服务未启用，手势功能暂无法生效。点击前往系统设置中开启。",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                    }
-                }
-            }
-
             Box(modifier = Modifier.weight(1f)) {
                 when (selectedTab) {
-                    0 -> WhiteBarScreen(configRepository)
-                    1 -> SideGestureScreen(configRepository)
-                    2 -> ShizukuScreen(configRepository, shizukuManager)
+                    0 -> BasicSettingsScreen(configRepository, shizukuManager)
+                    1 -> WhiteBarScreen(configRepository)
+                    2 -> SideGestureScreen(configRepository)
+                    3 -> OtherSettingsScreen(configRepository)
                 }
             }
         }
@@ -136,7 +115,7 @@ fun MainSettingsScreen(
 }
 
 private fun checkAccessibilityServiceEnabled(context: Context): Boolean {
-    val serviceName = "${context.packageName}/com.omarea.gesture.AccessibilityServiceGesture"
+    val serviceName = "${context.packageName}/com.omarea.gesture.ModernGestureService"
     val enabledServices = Settings.Secure.getString(
         context.contentResolver,
         Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES

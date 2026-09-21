@@ -44,6 +44,7 @@ import kotlinx.coroutines.withContext
 data class InstalledAppItem(
     val name: String,
     val packageName: String,
+    val activityName: String,
     val icon: Drawable?
 )
 
@@ -68,12 +69,13 @@ fun AppPickerDialog(
                 try {
                     val name = info.loadLabel(pm).toString()
                     val pkg = info.activityInfo.packageName
-                    val icon = info.loadIcon(pm)
-                    InstalledAppItem(name, pkg, icon)
+                    val activity = info.activityInfo.name
+                    val icon = try { info.loadIcon(pm) } catch (_: Exception) { null }
+                    InstalledAppItem(name, pkg, activity, icon)
                 } catch (_: Exception) {
                     null
                 }
-            }.sortedBy { it.name }
+            }.distinctBy { "${it.packageName}/${it.activityName}" }.sortedBy { it.name }
             appList = items
             isLoading = false
         }
@@ -112,26 +114,36 @@ fun AppPickerDialog(
                     }
                 } else {
                     LazyColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
-                        items(filteredList, key = { it.packageName }) { app ->
+                        items(
+                            items = filteredList,
+                            key = { "${it.packageName}/${it.activityName}" }
+                        ) { app ->
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable {
-                                        onAppSelected(Action.LaunchApp(app.packageName, app.name))
+                                        onAppSelected(Action.LaunchApp(app.packageName, app.name, app.activityName))
                                     }
                                     .padding(vertical = 8.dp, horizontal = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                app.icon?.let { drawable ->
-                                    val bitmap = remember(app.packageName) {
-                                        drawable.toBitmap(width = 44, height = 44).asImageBitmap()
+                                val imageBitmap = remember(app.packageName, app.activityName) {
+                                    try {
+                                        app.icon?.toBitmap(width = 44, height = 44)?.asImageBitmap()
+                                    } catch (_: Exception) {
+                                        null
                                     }
+                                }
+
+                                if (imageBitmap != null) {
                                     Image(
-                                        bitmap = bitmap,
+                                        bitmap = imageBitmap,
                                         contentDescription = app.name,
                                         modifier = Modifier.size(40.dp)
                                     )
-                                } ?: Box(modifier = Modifier.size(40.dp))
+                                } else {
+                                    Box(modifier = Modifier.size(40.dp))
+                                }
 
                                 Spacer(modifier = Modifier.width(12.dp))
 

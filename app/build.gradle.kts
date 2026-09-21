@@ -14,8 +14,8 @@ android {
         applicationId = "com.omarea.gesture.modern"
         minSdk = 26
         targetSdk = 36
-        versionCode = 200
-        versionName = "2.0.0"
+        versionCode = 20260921
+        versionName = "2026.09.21"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

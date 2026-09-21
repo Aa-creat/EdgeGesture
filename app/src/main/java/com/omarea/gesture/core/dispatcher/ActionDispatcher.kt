@@ -70,7 +70,7 @@ class ActionDispatcher @JvmOverloads constructor(
                 switchPreviousApp(accessibilityService)
             }
             is Action.LaunchApp -> {
-                launchApp(action.packageName, action.activityName)
+                launchApp(action.packageName, action.activityName, accessibilityService)
             }
             is Action.RunShell -> {
                 runShellCommand(action.command)
@@ -86,38 +86,48 @@ class ActionDispatcher @JvmOverloads constructor(
         }
     }
 
-    private fun launchApp(packageName: String, activityName: String?) {
+    private fun launchApp(packageName: String, activityName: String?, service: AccessibilityServiceGesture?) {
         // 如果开启了 Shizuku 模式且已授权，尝试特权启动以绕过后台启动限制
         if (configRepository.whiteBarConfig.value.shizukuEnabled && shizukuManager.isAvailable()) {
             mainScope.launch {
                 val result = shizukuManager.launchAppPrivileged(packageName, activityName)
                 if (result.isFailure) {
                     // 特权启动失败时回退到标准启动
-                    standardLaunchApp(packageName, activityName)
+                    standardLaunchApp(packageName, activityName, service)
                 }
             }
             return
         }
 
-        standardLaunchApp(packageName, activityName)
+        standardLaunchApp(packageName, activityName, service)
     }
 
-    private fun standardLaunchApp(packageName: String, activityName: String?) {
+    private fun standardLaunchApp(packageName: String, activityName: String?, service: AccessibilityServiceGesture?) {
         try {
             val pm: PackageManager = context.packageManager
             val intent: Intent? = if (!activityName.isNullOrBlank()) {
                 Intent().apply {
                     setClassName(packageName, activityName)
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED or Intent.FLAG_ACTIVITY_NO_ANIMATION)
+                    addFlags(Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY)
                 }
             } else {
                 pm.getLaunchIntentForPackage(packageName)?.apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
+                    flags = (flags and Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED.inv()) or
+                            Intent.FLAG_ACTIVITY_NEW_TASK or
+                            Intent.FLAG_ACTIVITY_NO_ANIMATION or
+                            Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY
+                    `package` = null
                 }
             }
 
             if (intent != null) {
-                context.startActivity(intent)
+                // 关键：优先使用无障碍服务 Context 启动，彻底突破 Android 10+ 后台启动限制（BAL）
+                if (service != null) {
+                    service.startActivity(intent)
+                } else {
+                    context.startActivity(intent)
+                }
             } else {
                 Toast.makeText(context, "无法启动应用: $packageName", Toast.LENGTH_SHORT).show()
             }
@@ -132,7 +142,7 @@ class ActionDispatcher @JvmOverloads constructor(
             if (prevPkg == Intent.CATEGORY_HOME) {
                 service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME)
             } else {
-                launchApp(prevPkg, null)
+                launchApp(prevPkg, null, service)
             }
         } else {
             // 回退到多任务键

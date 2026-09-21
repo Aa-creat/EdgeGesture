@@ -10,12 +10,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -36,14 +39,31 @@ import androidx.compose.ui.unit.dp
 import com.omarea.gesture.core.config.AppConfigRepository
 import com.omarea.gesture.core.model.Action
 import com.omarea.gesture.ui.settings.components.ActionSelectDialog
+import com.omarea.gesture.ui.settings.components.ColorHexText
+import com.omarea.gesture.ui.settings.components.ColorPickerDialog
 import kotlinx.coroutines.launch
 
 @Composable
 fun WhiteBarScreen(configRepository: AppConfigRepository) {
-    val config by configRepository.whiteBarConfig.collectAsState()
     val scope = rememberCoroutineScope()
+    val config by configRepository.whiteBarConfig.collectAsState()
 
     var editingActionType by remember { mutableStateOf<String?>(null) }
+    var showColorPicker by remember { mutableStateOf(false) }
+
+    if (showColorPicker) {
+        ColorPickerDialog(
+            title = "自定义小白条颜色",
+            initialColor = config.color.toInt(),
+            initialAlpha = config.alpha,
+            onDismiss = { showColorPicker = false },
+            onColorSelected = { c, a ->
+                scope.launch {
+                    configRepository.updateWhiteBarAppearance(c.toLong(), a)
+                }
+            }
+        )
+    }
 
     editingActionType?.let { type ->
         val title = when (type) {
@@ -91,35 +111,52 @@ fun WhiteBarScreen(configRepository: AppConfigRepository) {
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
     ) {
-        // 1. 总开关卡片
+        // 1. 总开关与横竖屏卡片
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(text = "启用底部小白条", style = MaterialTheme.typography.titleMedium)
+            Column(modifier = Modifier.padding(16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Text(
-                        text = "类似 iOS 风格的底部轻量级手势导航条",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = "启用底部小白条",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Switch(
+                        checked = config.enabled,
+                        onCheckedChange = { scope.launch { configRepository.updateWhiteBarEnabled(it) } }
                     )
                 }
-                Switch(
-                    checked = config.enabled,
-                    onCheckedChange = { scope.launch { configRepository.updateWhiteBarEnabled(it) } }
-                )
+
+                if (config.enabled) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("横屏", style = MaterialTheme.typography.bodyMedium)
+                        Checkbox(
+                            checked = config.landscapeEnabled,
+                            onCheckedChange = { scope.launch { configRepository.updateWhiteBarOrientation(it, config.portraitEnabled) } }
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text("竖屏", style = MaterialTheme.typography.bodyMedium)
+                        Checkbox(
+                            checked = config.portraitEnabled,
+                            onCheckedChange = { scope.launch { configRepository.updateWhiteBarOrientation(config.landscapeEnabled, it) } }
+                        )
+                    }
+                }
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 2. 实时外观预览卡片
+        // 2. 尺寸与热区调节卡片
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
@@ -127,41 +164,54 @@ fun WhiteBarScreen(configRepository: AppConfigRepository) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .padding(16.dp)
             ) {
-                Text(text = "实时外观预览", style = MaterialTheme.typography.titleSmall)
-                Spacer(modifier = Modifier.height(16.dp))
-                Box(
-                    modifier = Modifier
-                        .width(config.widthDp.dp)
-                        .height(config.heightDp.dp)
-                        .clip(RoundedCornerShape(config.radiusDp.dp))
-                        .background(Color(config.color).copy(alpha = config.alpha))
-                )
-                Spacer(modifier = Modifier.height(16.dp))
+                Text(text = "外观尺寸与触控热区", style = MaterialTheme.typography.titleMedium)
+                Spacer(modifier = Modifier.height(12.dp))
 
-                // 尺寸调节滑块
-                Text("宽度: ${config.widthDp.toInt()} dp", style = MaterialTheme.typography.bodySmall)
+                // 尺寸与热区调节滑块
+                Text("小白条宽度: ${config.widthDp.toInt()} dp", style = MaterialTheme.typography.bodySmall)
                 Slider(
                     value = config.widthDp,
                     onValueChange = {
                         scope.launch {
-                            configRepository.updateWhiteBarDimensions(it, config.heightDp, config.bottomMarginDp, config.radiusDp)
+                            configRepository.updateWhiteBarDimensions(it, config.heightDp, config.touchHeightDp, config.touchWidthDp, config.bottomMarginDp, config.radiusDp)
                         }
                     },
-                    valueRange = 60f..260f
+                    valueRange = 60f..300f
                 )
 
-                Text("高度: ${config.heightDp.toInt()} dp", style = MaterialTheme.typography.bodySmall)
+                Text("触控热区宽度: ${config.touchWidthDp.toInt()} dp", style = MaterialTheme.typography.bodySmall)
+                Slider(
+                    value = config.touchWidthDp,
+                    onValueChange = {
+                        scope.launch {
+                            configRepository.updateWhiteBarDimensions(config.widthDp, config.heightDp, config.touchHeightDp, it, config.bottomMarginDp, config.radiusDp)
+                        }
+                    },
+                    valueRange = 60f..400f
+                )
+
+                Text("触控热区高度: ${config.touchHeightDp.toInt()} dp", style = MaterialTheme.typography.bodySmall)
+                Slider(
+                    value = config.touchHeightDp,
+                    onValueChange = {
+                        scope.launch {
+                            configRepository.updateWhiteBarDimensions(config.widthDp, config.heightDp, it, config.touchWidthDp, config.bottomMarginDp, config.radiusDp)
+                        }
+                    },
+                    valueRange = 8f..80f
+                )
+
+                Text("线条高度: ${config.heightDp.toInt()} dp", style = MaterialTheme.typography.bodySmall)
                 Slider(
                     value = config.heightDp,
                     onValueChange = {
                         scope.launch {
-                            configRepository.updateWhiteBarDimensions(config.widthDp, it, config.bottomMarginDp, config.radiusDp)
+                            configRepository.updateWhiteBarDimensions(config.widthDp, it, config.touchHeightDp, config.touchWidthDp, config.bottomMarginDp, config.radiusDp)
                         }
                     },
-                    valueRange = 2f..10f
+                    valueRange = 2f..20f
                 )
 
                 Text("底部边距: ${config.bottomMarginDp.toInt()} dp", style = MaterialTheme.typography.bodySmall)
@@ -169,29 +219,154 @@ fun WhiteBarScreen(configRepository: AppConfigRepository) {
                     value = config.bottomMarginDp,
                     onValueChange = {
                         scope.launch {
-                            configRepository.updateWhiteBarDimensions(config.widthDp, config.heightDp, it, config.radiusDp)
+                            configRepository.updateWhiteBarDimensions(config.widthDp, config.heightDp, config.touchHeightDp, config.touchWidthDp, it, config.radiusDp)
                         }
                     },
-                    valueRange = 0f..24f
+                    valueRange = 0f..60f
+                )
+
+                Text("圆角半径: ${config.radiusDp.toInt()} dp", style = MaterialTheme.typography.bodySmall)
+                Slider(
+                    value = config.radiusDp,
+                    onValueChange = {
+                        scope.launch {
+                            configRepository.updateWhiteBarDimensions(config.widthDp, config.heightDp, config.touchHeightDp, config.touchWidthDp, config.bottomMarginDp, it)
+                        }
+                    },
+                    valueRange = 0f..20f
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(text = "防止烧屏 (微位移)", style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            text = "定期微调位置防烧屏",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = config.burnInProtection,
+                        onCheckedChange = { scope.launch { configRepository.updateWhiteBarBurnInProtection(it) } }
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 3. 颜色与电量指示卡片
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                Text(text = "外观色彩与电量", style = MaterialTheme.typography.titleMedium)
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(text = "跟随电量指示", style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            text = "充当电量指示条",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = config.batteryLevelEnabled,
+                        onCheckedChange = { scope.launch { configRepository.updateWhiteBarBatteryLevel(it) } }
+                    )
+                }
+
+                if (config.batteryLevelEnabled) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(text = "现代平滑动态渐变", style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                text = if (config.batterySmoothGradient) "平滑色彩渐变" else "7 档色阶",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = config.batterySmoothGradient,
+                            onCheckedChange = { scope.launch { configRepository.updateWhiteBarBatterySmoothGradient(it) } }
+                        )
+                    }
+                }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+
+                // 调色盘选择入口
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showColorPicker = true }
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(Color(config.color))
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("小白条颜色与透明度", style = MaterialTheme.typography.bodyLarge)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("色号: ", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            ColorHexText(hexText = String.format("#%06X", (0xFFFFFF and config.color.toInt())))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "透明度: ${(config.alpha * 100).toInt()}%",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    FilledTonalButton(onClick = { showColorPicker = true }) {
+                        Text("打开调色盘")
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+                // 不透明度快速调节滑块（0% ~ 100%）
+                Text("不透明度: ${(config.alpha * 100).toInt()}%", style = MaterialTheme.typography.bodySmall)
+                Slider(
+                    value = config.alpha,
+                    onValueChange = {
+                        scope.launch {
+                            configRepository.updateWhiteBarAppearance(config.color, it)
+                        }
+                    },
+                    valueRange = 0f..1f
                 )
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 3. 核心手势动作配置卡片
+        // 4. 核心手势动作配置卡片
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
         ) {
             Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
                 Text(text = "手势动作映射", style = MaterialTheme.typography.titleMedium)
-                Text(
-                    text = "支持点击直接绑定打开常用应用（如微信、相机等）",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 GestureActionRow("单击 (Click)", config.clickAction.title) {
                     editingActionType = "click"
@@ -221,34 +396,6 @@ fun WhiteBarScreen(configRepository: AppConfigRepository) {
                 GestureActionRow("上滑停顿 (Hover)", config.swipeUpHoldAction.title) {
                     editingActionType = "swipe_up_hold"
                 }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // 4. 触觉反馈开关
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(text = "线性马达触感反馈", style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        text = "针对 Android 10+ 线性马达提供清脆单击与长按顿挫反馈",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Switch(
-                    checked = config.hapticsEnabled,
-                    onCheckedChange = { scope.launch { configRepository.updateHapticsEnabled(it) } }
-                )
             }
         }
     }

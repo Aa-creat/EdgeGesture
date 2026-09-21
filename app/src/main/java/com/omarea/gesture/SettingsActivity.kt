@@ -27,4 +27,30 @@ open class SettingsActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onResume() {
+        super.onResume()
+        com.omarea.gesture.util.GlobalState.testMode = true
+        com.omarea.gesture.ui.gesture.ModernSideGestureBar.instance?.refreshTestMode()
+        com.omarea.gesture.ui.whitebar.ModernWhiteBar.instance?.refreshTestMode()
+        notifyConfigChanged()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        com.omarea.gesture.util.GlobalState.testMode = false
+        com.omarea.gesture.ui.gesture.ModernSideGestureBar.instance?.refreshTestMode()
+        com.omarea.gesture.ui.whitebar.ModernWhiteBar.instance?.refreshTestMode()
+        notifyConfigChanged()
+    }
+
+    private fun notifyConfigChanged() {
+        try {
+            val intent = android.content.Intent(getString(R.string.action_config_changed)).apply {
+                setPackage(packageName)
+            }
+            sendBroadcast(intent)
+        } catch (_: Exception) {
+        }
+    }
 }

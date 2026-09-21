@@ -2,19 +2,23 @@ package com.omarea.gesture.core.haptics
 
 import android.content.Context
 import android.os.Build
-import android.os.CombinedVibration
 import android.os.VibrationAttributes
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.view.HapticFeedbackConstants
 import android.view.View
+import com.omarea.gesture.core.config.AppConfigRepository
 
 /**
  * 现代触觉反馈管理器
  * 适配 Android 10 ~ 16 现代线性马达（Rich Haptics / Haptic Feedback Primitives）
+ * 支持 ColorOS / OnePlus 后台触控震动属性与自定义震动时长
  */
-class HapticsManager(private val context: Context) {
+class HapticsManager(
+    private val context: Context,
+    private val configRepository: AppConfigRepository
+) {
 
     private val vibrator: Vibrator? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         val vibratorManager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
@@ -33,107 +37,61 @@ class HapticsManager(private val context: Context) {
     }
 
     /**
-     * 针对 View 执行系统级触觉反馈
+     * 针对 View 执行触觉反馈
+     * 保证 100% 触发马达振动：
+     * 1. 尝试 View.performHapticFeedback (FLAG_IGNORE_VIEW_SETTING | FLAG_IGNORE_GLOBAL_SETTING)
+     * 2. 核心直接调用 Vibrator.createOneShot(ms, 255)，彻底绕过 ColorOS 对无焦点无障碍悬浮窗的触感过滤与全局开关拦截
      */
     fun performHapticFeedback(view: View?, type: HapticType) {
-        if (view == null) {
-            vibrate(type)
-            return
-        }
+        val basicConfig = configRepository.basicConfig.value
 
-        val feedbackConstant = when (type) {
-            HapticType.CLICK -> {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    HapticFeedbackConstants.CONFIRM
-                } else {
-                    HapticFeedbackConstants.KEYBOARD_TAP
-                }
-            }
-            HapticType.LONG_PRESS -> HapticFeedbackConstants.LONG_PRESS
-            HapticType.TICK -> HapticFeedbackConstants.CLOCK_TICK
-            HapticType.SUCCESS -> {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    HapticFeedbackConstants.CONFIRM
-                } else {
-                    HapticFeedbackConstants.LONG_PRESS
-                }
-            }
-            HapticType.WARNING -> {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    HapticFeedbackConstants.REJECT
-                } else {
-                    HapticFeedbackConstants.LONG_PRESS
-                }
-            }
-        }
-
-        val success = view.performHapticFeedback(feedbackConstant)
-        if (!success) {
-            vibrate(type)
-        }
-    }
-
-    /**
-     * 直接调用 Vibrator 进行高精度马达振动
-     */
-    fun vibrate(type: HapticType) {
-        val v = vibrator ?: return
-        if (!v.hasVibrator()) return
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            // Android 11+ 支持丰富的 Primitive 组合触感
-            val primitive = when (type) {
-                HapticType.CLICK -> VibrationEffect.Composition.PRIMITIVE_CLICK
-                HapticType.LONG_PRESS -> VibrationEffect.Composition.PRIMITIVE_TICK
-                HapticType.TICK -> VibrationEffect.Composition.PRIMITIVE_LOW_TICK
-                HapticType.SUCCESS -> VibrationEffect.Composition.PRIMITIVE_CLICK
-                HapticType.WARNING -> VibrationEffect.Composition.PRIMITIVE_QUICK_FALL
-            }
-
-            if (v.areAllPrimitivesSupported(primitive)) {
-                val composition = VibrationEffect.startComposition()
-                when (type) {
-                    HapticType.CLICK -> composition.addPrimitive(primitive, 1.0f)
-                    HapticType.LONG_PRESS -> {
-                        composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.7f)
-                        composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 1.0f, 20)
-                    }
-                    HapticType.TICK -> composition.addPrimitive(primitive, 0.5f)
-                    HapticType.SUCCESS -> {
-                        composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.8f)
-                        composition.addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 1.0f, 30)
-                    }
-                    HapticType.WARNING -> composition.addPrimitive(primitive, 1.0f)
-                }
-                v.vibrate(composition.compose())
-                return
-            }
-        }
-
-        // Android 10+ 预设效果与单脉冲回退
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val effectId = when (type) {
-                HapticType.CLICK -> VibrationEffect.EFFECT_CLICK
-                HapticType.LONG_PRESS -> VibrationEffect.EFFECT_HEAVY_CLICK
-                HapticType.TICK -> VibrationEffect.EFFECT_TICK
-                HapticType.SUCCESS -> VibrationEffect.EFFECT_CLICK
-                HapticType.WARNING -> VibrationEffect.EFFECT_DOUBLE_CLICK
-            }
+        if (basicConfig.vibratorUseSystem && view != null) {
             try {
-                v.vibrate(VibrationEffect.createPredefined(effectId))
-                return
+                view.isHapticFeedbackEnabled = true
+                val constant = when (type) {
+                    HapticType.CLICK, HapticType.SUCCESS -> HapticFeedbackConstants.VIRTUAL_KEY
+                    HapticType.LONG_PRESS, HapticType.WARNING -> HapticFeedbackConstants.LONG_PRESS
+                    HapticType.TICK -> HapticFeedbackConstants.CLOCK_TICK
+                }
+                val flags = HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING or HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING
+                view.performHapticFeedback(constant, flags)
             } catch (_: Exception) {
             }
         }
 
-        // 传统单脉冲振动回退
-        val (duration, amplitude) = when (type) {
-            HapticType.CLICK -> 18L to 180
-            HapticType.LONG_PRESS -> 35L to 255
-            HapticType.TICK -> 10L to 100
-            HapticType.SUCCESS -> 25L to 200
-            HapticType.WARNING -> 40L to 230
+        // 直接调用硬件 Vibrator 进行触感兜底，确保在任何系统与设置下都能产生真实手感
+        vibrateDirect(type, isSystem = basicConfig.vibratorUseSystem)
+    }
+
+    /**
+     * 直接调用 Vibrator 进行马达振动
+     */
+    fun vibrate(type: HapticType) {
+        val basicConfig = configRepository.basicConfig.value
+        vibrateDirect(type, isSystem = basicConfig.vibratorUseSystem)
+    }
+
+    private fun vibrateDirect(type: HapticType, isSystem: Boolean) {
+        val v = vibrator ?: return
+        if (!v.hasVibrator()) return
+
+        val basicConfig = configRepository.basicConfig.value
+        v.cancel()
+
+        val isLong = type == HapticType.LONG_PRESS || type == HapticType.SUCCESS || type == HapticType.WARNING
+        val durationMs = if (isSystem) {
+            if (isLong) 35L else 15L
+        } else {
+            (if (isLong) basicConfig.vibratorHoverTimeMs else basicConfig.vibratorTapTimeMs).toLong()
         }
-        v.vibrate(VibrationEffect.createOneShot(duration, amplitude))
+
+        if (durationMs <= 0) return
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            v.vibrate(VibrationEffect.createOneShot(durationMs, 255))
+        } else {
+            @Suppress("DEPRECATION")
+            v.vibrate(durationMs)
+        }
     }
 }
