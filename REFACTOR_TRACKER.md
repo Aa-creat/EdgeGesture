@@ -74,6 +74,7 @@
 | 2026-09-21 | 阶段 5：两侧边缘手势适配 | 1. 实现 `ModernSideGestureBar` 现代化两侧触控条<br/>2. 适配 Android 10+ `setSystemGestureExclusionRects` 防止原生侧滑冲突<br/>3. 适配现代 `WindowMetrics`，精准响应横竖屏旋转与窗口尺寸变更 | 阶段 5 代码编译通过 (BUILD SUCCESSFUL) |
 | 2026-09-21 | 阶段 6：Compose 设置界面 | 1. 采用 Material 3 + Compose 重写 `SettingsActivity`<br/>2. 实现小白条配置页（实时外观预览、尺寸滑块、手势映射）<br/>3. 实现带图标与实时搜索的应用选择弹窗 `AppPickerDialog`<br/>4. 实现两侧边缘手势配置页与 Shizuku 状态卡片 | 阶段 6 代码编译通过 (BUILD SUCCESSFUL) |
 | 2026-09-21 | 阶段 7：代码清理与构建验证 | 1. 清理全部旧版 XML Fragments (`FragmentBasic`, `FragmentWhiteBar` 等)<br/>2. 修复 Material 3 组件适配，消除编译警告<br/>3. 全流程自动化构建测试通过，生成全新 Debug APK | `app-debug.apk` 构建成功 (BUILD SUCCESSFUL) |
+| 2026-09-21 | 独立包名与应用签名 | 1. 修改 applicationId 为 `com.omarea.gesture.modern`，支持与原版应用并存安装、实时比对<br/>2. 创建专属签名密钥 `app/keystore/release.jks`，配置 `signingConfigs` 自动签名<br/>3. 修改应用显示名称为 `Gesture (Modern)`，并在 Actions 中同时构建 Release/Debug 双版本已签名 APK | 成功生成已签名的 `app-release.apk` 与 `app-debug.apk` |
 
 
 
