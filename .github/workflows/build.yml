@@ -48,10 +48,27 @@ jobs:
       - name: Grant Execute Permission to Gradlew
         run: chmod +x gradlew
 
+      - name: Setup Signing Key (from Secrets)
+        if: env.KEYSTORE_BASE64 != ''
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
+          echo "KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> $GITHUB_ENV
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+
       - name: Build APKs (Release & Debug)
         run: ./gradlew assembleRelease assembleDebug --stacktrace
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
-      - name: Upload Signed APKs
+      - name: Cleanup Signing Key
+        if: always()
+        run: |
+          rm -f "$RUNNER_TEMP/release.jks" || true
+
+      - name: Upload APKs
         uses: actions/upload-artifact@v4
         with:
           name: EdgeGesture-APKs

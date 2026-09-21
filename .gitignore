@@ -10,3 +10,9 @@ app/release_mini/*
 app/release/*
 .externalNativeBuild
 *.class
+
+# Keystores & Signing Secrets
+*.jks
+*.keystore
+key.properties
+signing.properties

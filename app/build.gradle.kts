@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.compiler)
@@ -18,10 +21,33 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file("keystore/release.jks")
-            storePassword = "edgegesture"
-            keyAlias = "edgegesture"
-            keyPassword = "edgegesture"
+            val keyPropsFile = rootProject.file("key.properties")
+            val keyProps = Properties()
+            if (keyPropsFile.exists()) {
+                keyProps.load(FileInputStream(keyPropsFile))
+            }
+
+            val storeFilePath = System.getenv("KEYSTORE_PATH")
+                ?: keyProps.getProperty("storeFile")
+            val storePass = System.getenv("KEYSTORE_PASSWORD")
+                ?: keyProps.getProperty("storePassword")
+            val keyAl = System.getenv("KEY_ALIAS")
+                ?: keyProps.getProperty("keyAlias")
+            val keyPass = System.getenv("KEY_PASSWORD")
+                ?: keyProps.getProperty("keyPassword")
+
+            if (!storeFilePath.isNullOrBlank() && file(storeFilePath).exists()) {
+                storeFile = file(storeFilePath)
+                storePassword = storePass
+                keyAlias = keyAl
+                keyPassword = keyPass
+            } else {
+                val debugConfig = signingConfigs.getByName("debug")
+                storeFile = debugConfig.storeFile
+                storePassword = debugConfig.storePassword
+                keyAlias = debugConfig.keyAlias
+                keyPassword = debugConfig.keyPassword
+            }
         }
     }
 
@@ -34,7 +60,7 @@ android {
         debug {
             isMinifyEnabled = false
             isDebuggable = true
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 
