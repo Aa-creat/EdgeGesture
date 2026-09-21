@@ -36,11 +36,20 @@ android {
             val keyPass = System.getenv("KEY_PASSWORD")
                 ?: keyProps.getProperty("keyPassword")
 
-            if (!storeFilePath.isNullOrBlank() && file(storeFilePath).exists()) {
-                storeFile = file(storeFilePath)
+            val resolvedStoreFile = when {
+                storeFilePath.isNullOrBlank() -> null
+                file(storeFilePath).exists() -> file(storeFilePath)
+                rootProject.file(storeFilePath).exists() -> rootProject.file(storeFilePath)
+                else -> null
+            }
+
+            if (resolvedStoreFile != null && resolvedStoreFile.exists()) {
+                storeFile = resolvedStoreFile
                 storePassword = storePass
                 keyAlias = keyAl
                 keyPassword = keyPass
+                enableV1Signing = true
+                enableV2Signing = true
             } else {
                 val debugConfig = signingConfigs.getByName("debug")
                 storeFile = debugConfig.storeFile
