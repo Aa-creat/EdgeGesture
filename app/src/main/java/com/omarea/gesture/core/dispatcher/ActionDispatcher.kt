@@ -5,15 +5,28 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.widget.Toast
 import com.omarea.gesture.AccessibilityServiceGesture
+import com.omarea.gesture.core.config.AppConfigRepository
 import com.omarea.gesture.core.model.Action
+import com.omarea.gesture.core.shizuku.ShizukuManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /**
  * 动作调度分发中枢
  * 负责将手势触发的 Action 路由至无障碍全局操作、应用启动或 Shizuku 特权执行
  */
-class ActionDispatcher(private val context: Context) {
+class ActionDispatcher @JvmOverloads constructor(
+    private val context: Context,
+    private val configRepository: AppConfigRepository = AppConfigRepository.getInstance(context),
+    private val shizukuManager: ShizukuManager = ShizukuManager.getInstance(context)
+) {
+    private val mainScope = CoroutineScope(Dispatchers.Main)
+    private val handler = Handler(Looper.getMainLooper())
 
     fun dispatch(action: Action, accessibilityService: AccessibilityServiceGesture? = null) {
         when (action) {
@@ -74,16 +87,32 @@ class ActionDispatcher(private val context: Context) {
     }
 
     private fun launchApp(packageName: String, activityName: String?) {
+        // 如果开启了 Shizuku 模式且已授权，尝试特权启动以绕过后台启动限制
+        if (configRepository.whiteBarConfig.value.shizukuEnabled && shizukuManager.isAvailable()) {
+            mainScope.launch {
+                val result = shizukuManager.launchAppPrivileged(packageName, activityName)
+                if (result.isFailure) {
+                    // 特权启动失败时回退到标准启动
+                    standardLaunchApp(packageName, activityName)
+                }
+            }
+            return
+        }
+
+        standardLaunchApp(packageName, activityName)
+    }
+
+    private fun standardLaunchApp(packageName: String, activityName: String?) {
         try {
             val pm: PackageManager = context.packageManager
             val intent: Intent? = if (!activityName.isNullOrBlank()) {
                 Intent().apply {
                     setClassName(packageName, activityName)
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
                 }
             } else {
                 pm.getLaunchIntentForPackage(packageName)?.apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
                 }
             }
 
@@ -112,7 +141,19 @@ class ActionDispatcher(private val context: Context) {
     }
 
     private fun runShellCommand(command: String) {
-        // 后续结合 Shizuku 模块执行
-        Toast.makeText(context, "执行指令: $command", Toast.LENGTH_SHORT).show()
+        if (shizukuManager.isAvailable()) {
+            mainScope.launch {
+                val result = shizukuManager.executeShell(command)
+                result.onSuccess { output ->
+                    if (output.isNotBlank()) {
+                        Toast.makeText(context, output.take(100), Toast.LENGTH_SHORT).show()
+                    }
+                }.onFailure { error ->
+                    Toast.makeText(context, "执行失败: ${error.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        } else {
+            Toast.makeText(context, "需要激活并授权 Shizuku 才能执行特权 Shell 指令", Toast.LENGTH_SHORT).show()
+        }
     }
 }

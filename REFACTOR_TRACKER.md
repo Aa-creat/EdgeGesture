@@ -39,9 +39,9 @@
 - [x] **Task 3.4**: 挂载至 `AccessibilityServiceGesture`，完成小白条独立验证
 
 ### 阶段 4：Shizuku 特权模块集成 (Shizuku Integration)
-- [ ] **Task 4.1**: 封装 `core/shizuku/ShizukuManager.kt`（权限检查、授权监听、Binder 调用）
-- [ ] **Task 4.2**: 接入 Shizuku 特权动作通道（瞬时启动应用绕过 5s 延迟、执行特权 Shell）
-- [ ] **Task 4.3**: 废弃并清理旧版 `adb_process` 目录及本地 HTTP 服务 (`RemoteAPI.java`)
+- [x] **Task 4.1**: 封装 `core/shizuku/ShizukuManager.kt`（权限检查、授权监听、Binder 调用）
+- [x] **Task 4.2**: 接入 Shizuku 特权动作通道（瞬时启动应用绕过 5s 延迟、执行特权 Shell）
+- [x] **Task 4.3**: 废弃并清理旧版 `adb_process` 目录及本地 HTTP 服务 (`RemoteAPI.java`)
 
 ### 阶段 5：两侧边缘手势与防冲突适配 (Side & Bottom Gestures)
 - [ ] **Task 5.1**: 现代化重构两侧边缘手势触控条（`SideGestureBar.kt`）
@@ -69,5 +69,7 @@
 | 2026-09-20 | 阶段 1：构建系统升级 | 1. 升级 Gradle 9.5.0 + AGP 9.3.1 + Kotlin 2.3.21<br/>2. 适配 targetSdk 36 (Android 16), compileSdk 36<br/>3. 引入 Compose/Material 3/Coroutines/DataStore/Shizuku 依赖<br/>4. 修复 Manifest exported 属性，完成首次成功编译 | `assembleDebug` 编译成功通过 (BUILD SUCCESSFUL) |
 | 2026-09-20 | 阶段 2：基础核心架构 | 1. 实现 `HapticsManager` 现代高品质线性马达触觉反馈<br/>2. 实现 `Action` 手势动作模型与编解码器<br/>3. 实现 `AppConfigRepository` 基于 DataStore 的响应式配置<br/>4. 实现 `ActionDispatcher` 统一动作分发器 | 阶段 2 代码编译通过 (BUILD SUCCESSFUL) |
 | 2026-09-20 | 阶段 3：小白条与手势核心 | 1. 实现 `ModernWhiteBarView` 原生高效 Canvas 绘制与物理缩放<br/>2. 实现 `ModernWhiteBar` 低延迟手势检测（单击/长按打开指定应用、滑动切应用）<br/>3. 挂载至 `AccessibilityServiceGesture`，无缝替换旧版悬浮视图 | 阶段 3 代码编译通过 (BUILD SUCCESSFUL) |
+| 2026-09-21 | 阶段 4：Shizuku 模块集成 | 1. 封装 `ShizukuManager`，支持 Binder 监听、权限申请与特权 Shell 执行<br/>2. `ActionDispatcher` 接入特权启动与 Shell 调度，实现安全降级<br/>3. 彻底移除旧版 `adb_process` 目录及本地 HTTP 服务，`AdbProcessExtractor` 与 `RemoteAPI` 迁移至安全桩代码 | 阶段 4 代码编译通过 (BUILD SUCCESSFUL) |
+
 
 
