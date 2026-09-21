@@ -49,10 +49,14 @@ jobs:
         run: chmod +x gradlew
 
       - name: Setup Signing Key (from Secrets)
-        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
         run: |
-          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
-          echo "KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> $GITHUB_ENV
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
+            echo "KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> $GITHUB_ENV
+            echo "Signing key successfully decoded from Secrets."
+          else
+            echo "No KEYSTORE_BASE64 secret found, skipping release key setup."
+          fi
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
 
