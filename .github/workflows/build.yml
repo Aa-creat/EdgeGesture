@@ -2,7 +2,6 @@ name: Build APK
 
 on:
   push:
-    branches: [ master, main ]
     tags:
       - 'v*'
       - '[0-9]*'
@@ -63,8 +62,8 @@ jobs:
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
 
-      - name: Build APKs (Release & Debug)
-        run: ./gradlew assembleRelease assembleDebug --stacktrace
+      - name: Build APKs (Release)
+        run: ./gradlew assembleRelease --stacktrace
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
@@ -75,24 +74,50 @@ jobs:
         run: |
           rm -f "$RUNNER_TEMP/release.jks" || true
 
-      - name: Upload APKs
+      - name: Prepare Release Artifact & Changelog
+        run: |
+          TAG_NAME="${{ github.ref_name }}"
+          cp app/build/outputs/apk/release/app-release.apk "EdgeGesture-${TAG_NAME}.apk"
+          cat << 'EOF' > release_notes.md
+          ## EdgeGesture 2026.09.21 重构与体验跃升版
+
+          ### 🎨 现代设计与视觉焕新
+          - **Material You 自适应图标**：重绘全矢量自适应图标，支持 Android 13+ 桌面动态主题色（Monochrome）、柔和微渐变发光背景与现代手机手势剪影；
+          - **Material Design 3 Expressive (MD3E) 界面**：全面引入 24dp 表现力大圆角容器、`surfaceContainer` 柔和色阶、顶栏实时服务状态指示药丸（`● 服务已运行` / `▲ 服务未启用`）；
+          - **定制手势矢量导航栏**：基础设置、小白条、边缘手势、其它设置均换装专属手势矢量图标；
+          - **签名级交互控件**：开关控件全量升级为 MD3 带勾选微动效 Switch。
+
+          ### ⚡ 手感体验与核心功能调优
+          - **0ms 瞬发响应**：彻底废除小白条双击判定延迟，单击即刻触发；
+          - **系统级物理跟手反馈**：小白条实现 1:1 跟手阻尼位移、0.90x 微缩放与松手弹性回弹动效；
+          - **触控热区自由解绑**：小白条视觉尺寸与触控热区彻底解耦，宽度（60~400dp）与高度（8~80dp）自由调节，彻底修复旧版卡死问题；
+          - **0% 纯透明度支持**：小白条透明度支持拉至 0%，本体与描边完全隐藏，保留纯粹盲操手势热区；
+          - **OLED 防烧屏微位移**：定时微调小白条像素位置，有效避免 OLED 屏幕长时间驻留烧屏；
+          - **电量指示双模式**：支持现代平滑连续动态渐变与经典 7 档色阶自由切换；
+          - **贴底边缘手势**：左右侧滑触控区采用原生贴底对齐，支持左右独立宽度微调。
+
+          ### 📳 触觉震感与系统适配
+          - **线性马达震感穿透**：深度对齐原版触感引擎，系统级震感与硬件级脉冲双保险，确保各类系统环境下均能 100% 触发清脆触感反馈；
+          - **Android 16 现代适配**：全面适配 compileSdk 36 与 targetSdk 36；
+          - **R8 极致轻量化**：彻底剔除 6 个废弃旧版 Java View 与 9 个旧版 XML 布局，启用混淆优化与资源缩减，安装包仅约 1.5MB。
+          EOF
+
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: EdgeGesture-APKs
-          path: |
-            app/build/outputs/apk/release/*.apk
-            app/build/outputs/apk/debug/*.apk
+          name: EdgeGesture-Release-APK
+          path: EdgeGesture-*.apk
           retention-days: 14
 
       - name: Release APK (on Tag)
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            app/build/outputs/apk/release/*.apk
-            app/build/outputs/apk/debug/*.apk
+          name: EdgeGesture ${{ github.ref_name }}
+          body_path: release_notes.md
+          files: EdgeGesture-*.apk
           draft: false
           prerelease: false
-          generate_release_notes: true
+          generate_release_notes: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
