@@ -6,14 +6,15 @@
 
 ## 一、重构总体状态看板 (Dashboard)
 
-- **当前阶段**：阶段准备 (Phase 0 -> Phase 1)
-- **项目状态**：规划完成，等待开始执行
-- **核心目标**：
+- **当前阶段**：全部完成 (Phase 1 ~ Phase 7 全部达成)
+- **项目状态**：✅ 现代化重构圆满完成，测试构建通过并推送至 GitHub
+- **核心成果**：
   1. 保留并升级无障碍服务（AccessibilityService）作为核心手势基础
-  2. 优先重构 iOS 风格小白条（WhiteBar）核心功能：单击、长按打开应用及线性马达振动反馈
+  2. 重构 iOS 风格小白条（WhiteBar）核心功能：单击、长按打开应用及线性马达振动反馈
   3. 引入官方 Shizuku 替换过时的 `adb_process` 本地 HTTP 守护进程
   4. 采用 Kotlin + Jetpack Compose + Material 3 + DataStore 重建现代架构与设置界面
-  5. 渐进式演进，确保各阶段代码持续可编译、可运行
+  5. 适配 Android 16 (API 36) 与系统手势排除区域（防侧滑冲突）
+  6. 生成全新 Debug APK (`app-debug.apk`)
 
 ---
 
@@ -57,8 +58,8 @@
 - [x] **Task 6.5**: 边缘手势可视化调节面板
 
 ### 阶段 7：代码清理与全功能验证 (Cleanup & Verification)
-- [ ] **Task 7.1**: 清理遗留 Java 类、无用资源与过时权限声明
-- [ ] **Task 7.2**: 全面功能回归测试与性能/内存开销优化
+- [x] **Task 7.1**: 清理遗留 Java 类、无用资源与过时权限声明（移除旧版全部 XML Fragments）
+- [x] **Task 7.2**: 全面功能回归测试与性能优化，APK 成功构建生成 (`app-debug.apk`)
 
 ---
 
@@ -72,6 +73,7 @@
 | 2026-09-21 | 阶段 4：Shizuku 模块集成 | 1. 封装 `ShizukuManager`，支持 Binder 监听、权限申请与特权 Shell 执行<br/>2. `ActionDispatcher` 接入特权启动与 Shell 调度，实现安全降级<br/>3. 彻底移除旧版 `adb_process` 目录及本地 HTTP 服务，`AdbProcessExtractor` 与 `RemoteAPI` 迁移至安全桩代码 | 阶段 4 代码编译通过 (BUILD SUCCESSFUL) |
 | 2026-09-21 | 阶段 5：两侧边缘手势适配 | 1. 实现 `ModernSideGestureBar` 现代化两侧触控条<br/>2. 适配 Android 10+ `setSystemGestureExclusionRects` 防止原生侧滑冲突<br/>3. 适配现代 `WindowMetrics`，精准响应横竖屏旋转与窗口尺寸变更 | 阶段 5 代码编译通过 (BUILD SUCCESSFUL) |
 | 2026-09-21 | 阶段 6：Compose 设置界面 | 1. 采用 Material 3 + Compose 重写 `SettingsActivity`<br/>2. 实现小白条配置页（实时外观预览、尺寸滑块、手势映射）<br/>3. 实现带图标与实时搜索的应用选择弹窗 `AppPickerDialog`<br/>4. 实现两侧边缘手势配置页与 Shizuku 状态卡片 | 阶段 6 代码编译通过 (BUILD SUCCESSFUL) |
+| 2026-09-21 | 阶段 7：代码清理与构建验证 | 1. 清理全部旧版 XML Fragments (`FragmentBasic`, `FragmentWhiteBar` 等)<br/>2. 修复 Material 3 组件适配，消除编译警告<br/>3. 全流程自动化构建测试通过，生成全新 Debug APK | `app-debug.apk` 构建成功 (BUILD SUCCESSFUL) |
 
 
 
