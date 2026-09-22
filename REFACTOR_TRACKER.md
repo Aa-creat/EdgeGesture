@@ -93,7 +93,7 @@
 
 - [x] **Task 10.13**: 自适应应用图标体系重绘（参考 `spotoolfy_flutter` 与现代 Material You 规范，构建矢量前景手势剪影 `ic_launcher_foreground.xml`、柔和青色渐变微发光背景 `ic_launcher_background.xml`、Android 13+ 动态主题单色图标 `ic_launcher_monochrome.xml`，以及 `mipmap-anydpi-v26` 自适应与圆形图标声明）
 - [x] **Task 10.14**: UI 全面升级为 Material Design 3 Expressive (MD3E) 标准（24dp 大圆角卡片 `shapes.large`、`surfaceContainer` 柔和对比色阶、顶栏动态服务状态胶囊药丸 `● 服务已运行` / `▲ 服务未启用`、4 枚手势专属矢量底部导航图标、带对勾图标的签名级 `Switch` 开关）
-- [x] **Task 10.15**: 全面清理项目本体无用原型与死代码（彻底删除 `SideGestureBar.java`、`TouchBarView.java`、`iOSWhiteBar.java` 等 6 个旧版 Java View，以及 `gesture_settings_*.xml` 等 9 个旧版 XML 布局；清理 `AccessibilityServiceGesture` 与 `GlobalState` 死代码引用）
+- [x] **Task 10.16**: 防止最近任务划掉误杀服务（`SettingsActivity` 与 `StartActivity` 声明 `android:excludeFromRecents="true"` 与 `autoRemoveFromRecents="true"`，退回桌面不驻留多任务卡片；`ModernGestureService` 声明 `android:stopWithTask="false"`，彻底杜绝用户在多任务界面手滑划掉或“一键清理”导致手势服务进程被连带杀死的致命痛点）
 
 ---
 
@@ -115,6 +115,8 @@
 | 2026-09-21 | 阶段 10：防烧屏、热区宽度与震动终极修复 | 1. **防烧屏微位移**：实现每 60 秒平滑微偏移小白条像素位置，防止 OLED 烧屏，设置界面提供开关<br/>2. **热区宽度独立可调**：新增 `touchWidthDp`（60dp~400dp），解耦视觉宽度与触控感应范围<br/>3. **震动双保险终极修复**：针对设备关闭全局触感（`haptic_feedback_enabled = 0`）环境，直接调用 `Vibrator.createOneShot(ms, 255)` 硬件脉冲，确保 100% 触发马达振动 | 全部完成，真机调试验证通过：<br/>• `vibrator_manager` 实测 100% 触发 `Step=15ms(amplitude=1.00)` 硬件级触感反馈<br/>• 触控热区宽度（200dp）实测生效（热区内触发振动与动作，热区外不截获点击）<br/>• 防烧屏开关与平滑微位移动画在 Compose 界面与 WindowManager 中正常生效 |
 | 2026-09-21 | 阶段 10：热区宽度解卡、0%透明度与文字精简 | 1. **热区宽度解卡**：修复 `ModernWhiteBarView.onMeasure` 覆盖测量宽度的 bug，热区宽度现严格跟随滑块自由设定<br/>2. **透明度支持 0%**：调色盘支持 0%~100%，小白条页面增加直接滑块；透明度为 0 时本体与描边完全隐藏，只留触控热区<br/>3. **文字全面精简**：删除所有界面的冗余长篇大论说明，UI 恢复纯净极简 | 全部完成，重新构建并安装部署 |
 | 2026-09-21 | 阶段 10：图标重绘、MD3E 美化与死代码清理 | 1. **应用图标重绘**：打造 Material You 自适应矢量图标体系（前景 `ic_launcher_foreground.xml`、渐变发光背景 `ic_launcher_background.xml`、单色主题图标 `ic_launcher_monochrome.xml`）<br/>2. **MD3E UI 全面美化**：引入 24dp 表现力大圆角、`surfaceContainer` 现代色阶、顶栏实时服务状态胶囊芯片、4 枚手势专属矢量底部导航图标、带勾选图标的 `Switch`<br/>3. **死代码全面清理**：删除 6 个旧版 Java 悬浮 View 与 9 个旧版 XML 布局，清理无效 import 与废弃符号 | 全部完成，`assembleRelease` 编译打包成功 (BUILD SUCCESSFUL) |
+| 2026-09-22 | 阶段 10：多任务防误杀与常驻保活 | 1. **多任务栏排除**：`SettingsActivity` 与 `StartActivity` 配置 `excludeFromRecents="true"` 与 `autoRemoveFromRecents="true"`，退出设置后不留卡片<br/>2. **服务常驻声明**：`ModernGestureService` 配置 `stopWithTask="false"`，杜绝多任务上划清除杀死无障碍手势服务 | 全部完成，编译通过 (BUILD SUCCESSFUL) |
+
 
 
 
