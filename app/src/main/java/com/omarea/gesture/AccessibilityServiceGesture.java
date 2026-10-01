@@ -31,8 +31,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicLong;
+import android.util.Log;
 
 public class AccessibilityServiceGesture extends AccessibilityService {
     public Recents recents = new Recents();
@@ -40,27 +42,36 @@ public class AccessibilityServiceGesture extends AccessibilityService {
     private com.omarea.gesture.ui.gesture.ModernSideGestureBar modernSideGestureBar = null;
     private BroadcastReceiver configChanged = null;
     private BroadcastReceiver serviceDisable = null;
-    private BroadcastReceiver screenStateReceiver;
+    private BroadcastReceiver screenStateReceiver = null;
     private SharedPreferences appSwitchBlackList;
     private BatteryReceiver batteryReceiver;
+    private final ExecutorService windowExecutor = Executors.newSingleThreadExecutor();
+    private final AtomicLong lastParsingTaskId = new AtomicLong(0);
 
     private boolean ignored(String packageName) {
-        return recents.inputMethods.contains(packageName);
+        if (packageName == null) return true;
+        List<String> ims = recents.inputMethods;
+        return ims != null && ims.contains(packageName);
     }
 
     // 检测应用是否是可以打开的
     private boolean canOpen(String packageName) {
+        if (packageName == null) return false;
         if (recents.blackList.contains(packageName)) {
             return false;
         } else if (recents.whiteList.contains(packageName)) {
             return true;
         } else {
-            Intent launchIntent = getPackageManager().getLaunchIntentForPackage(packageName);
-            if (launchIntent != null) {
-                recents.whiteList.add(packageName);
-                return true;
-            } else {
-                recents.blackList.add(packageName);
+            try {
+                Intent launchIntent = getPackageManager().getLaunchIntentForPackage(packageName);
+                if (launchIntent != null) {
+                    recents.whiteList.add(packageName);
+                    return true;
+                } else {
+                    recents.blackList.add(packageName);
+                    return false;
+                }
+            } catch (Exception e) {
                 return false;
             }
         }
@@ -68,30 +79,48 @@ public class AccessibilityServiceGesture extends AccessibilityService {
 
     // 启动器应用（桌面）
     private ArrayList<String> getLauncherApps() {
-        Intent resolveIntent = new Intent(Intent.ACTION_MAIN, null);
-        resolveIntent.addCategory(Intent.CATEGORY_HOME);
-        List<ResolveInfo> resolveinfoList = getPackageManager().queryIntentActivities(resolveIntent, 0);
         ArrayList<String> launcherApps = new ArrayList<>();
-        for (ResolveInfo resolveInfo : resolveinfoList) {
-            String packageName = resolveInfo.activityInfo.packageName;
-            if (!("com.android.settings".equals(packageName))) { // MIUI的设置也算个桌面，什么鬼
-                launcherApps.add(packageName);
+        try {
+            Intent resolveIntent = new Intent(Intent.ACTION_MAIN, null);
+            resolveIntent.addCategory(Intent.CATEGORY_HOME);
+            List<ResolveInfo> resolveinfoList = getPackageManager().queryIntentActivities(resolveIntent, 0);
+            if (resolveinfoList != null) {
+                for (ResolveInfo resolveInfo : resolveinfoList) {
+                    if (resolveInfo != null && resolveInfo.activityInfo != null) {
+                        String packageName = resolveInfo.activityInfo.packageName;
+                        if (!("com.android.settings".equals(packageName))) { // MIUI的设置也算个桌面，什么鬼
+                            launcherApps.add(packageName);
+                        }
+                    }
+                }
             }
+        } catch (Exception e) {
+            Log.e("AccessibilityGesture", "Failed to query launcher apps", e);
         }
         return launcherApps;
     }
 
     // 输入法应用
     private ArrayList<String> getInputMethods() {
-        InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
         ArrayList<String> inputMethods = new ArrayList<>();
-        for (InputMethodInfo inputMethodInfo : imm.getInputMethodList()) {
-            inputMethods.add(inputMethodInfo.getPackageName());
+        try {
+            InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) {
+                List<InputMethodInfo> imms = imm.getInputMethodList();
+                if (imms != null) {
+                    for (InputMethodInfo inputMethodInfo : imms) {
+                        if (inputMethodInfo != null) {
+                            inputMethods.add(inputMethodInfo.getPackageName());
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.e("AccessibilityGesture", "Failed to query input methods", e);
         }
         return inputMethods;
     }
 
-    private List<String> colorPolingApps = null; // 允许轮询颜色的APP
     private long lastOriginEventTime = 0L;
 
     private ArrayList<Integer> blackTypeList = new ArrayList<Integer>() {{
@@ -101,15 +130,15 @@ public class AccessibilityServiceGesture extends AccessibilityService {
         add(AccessibilityWindowInfo.TYPE_SYSTEM);
     }};
 
-    // TODO:判断是否进入全屏状态，以便在游戏和视频过程中降低功耗
     @Override
     public void onAccessibilityEvent(final AccessibilityEvent event) {
-        if (recents.inputMethods == null) {
-            recents.inputMethods = getInputMethods();
-            recents.launcherApps = getLauncherApps();
-        }
         if (event == null) {
             return;
+        }
+
+        if (recents.inputMethods.isEmpty()) {
+            recents.inputMethods.addAll(getInputMethods());
+            recents.launcherApps.addAll(getLauncherApps());
         }
 
         CharSequence packageName = event.getPackageName();
@@ -119,30 +148,27 @@ public class AccessibilityServiceGesture extends AccessibilityService {
 
         int eventType = event.getEventType();
 
-        if (eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
-            if (colorPolingApps != null && GlobalState.updateBar != null && !GlobalState.useBatteryCapacity) {
-                if (packageName != null) {
-                    if (colorPolingApps.contains(packageName.toString())) { // 抖音APP
-                        startColorPolling();
-                    }
-                }
-            }
-        }
-        else if (eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED || eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+        if (eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED || eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
             if (GlobalState.testMode && packageName != null && !packageName.toString().equals(getPackageName())) {
                 GlobalState.testMode = false;
                 createPopupView(false);
             }
             if (Gesture.config.getBoolean(SpfConfig.WINDOW_WATCH, SpfConfig.WINDOW_WATCH_DEFAULT)) {
-                List<AccessibilityWindowInfo> windowInfos = getWindows();
+                List<AccessibilityWindowInfo> windowInfos = null;
+                try {
+                    windowInfos = getWindows();
+                } catch (Throwable t) {
+                    windowInfos = null;
+                }
+
+                if (windowInfos == null || windowInfos.isEmpty()) {
+                    if (packageName != null) {
+                        handlePackageChanged(packageName.toString());
+                    }
+                    return;
+                }
+
                 AccessibilityWindowInfo lastWindow = null;
-
-                // TODO:
-                //      此前在MIUI系统上测试，只判定全屏显示（即窗口大小和屏幕分辨率完全一致）的应用，逻辑非常准确
-                //      但在类原生系统上表现并不好，例如：有缺口的屏幕或有导航键的系统，报告的窗口大小则可能不包括缺口高度区域和导航键区域高度
-                //      因此，现在将逻辑调整为：从所有应用窗口中选出最接近全屏的一个，判定为前台应用
-                //      当然，这并不意味着完美，只是暂时没有更好的解决方案……
-
                 long t = event.getEventTime();
                 if (lastOriginEventTime != t && t > lastOriginEventTime) {
                     lastOriginEventTime = t;
@@ -150,9 +176,7 @@ public class AccessibilityServiceGesture extends AccessibilityService {
                     int lastWindowSize = 0;
                     ArrayList<AccessibilityWindowInfo> effectiveWindows = new ArrayList<>();
                     for (AccessibilityWindowInfo windowInfo : windowInfos) {
-                        // if ((!(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && windowInfo.isInPictureInPictureMode())) && (windowInfo.getType() == AccessibilityWindowInfo.TYPE_APPLICATION)) {
-                        // 现在不过滤画中画应用了，因为有遇到像Telegram这样的应用，从画中画切换到全屏后仍检测到处于画中画模式，并且类型是 -1（可能是MIUI魔改出来的），但对用户来说全屏就是前台应用
-                        if (!blackTypeList.contains(windowInfo.getType())) {
+                        if (windowInfo != null && !blackTypeList.contains(windowInfo.getType())) {
                             effectiveWindows.add(windowInfo);
                         }
                     }
@@ -186,119 +210,88 @@ public class AccessibilityServiceGesture extends AccessibilityService {
                     }
 
                     if (lastWindow != null) {
-                        lastParsingThread = System.currentTimeMillis();
-                        /*
-                        if (event.getPackageName() == null) {
-                            Log.e(">>>>G", " " +event);
-                        }
-                        */
-                        Thread thread = new WindowParsingThread(lastWindow, lastParsingThread, event.getWindowId(), packageName);
-                        thread.start();
+                        final long taskId = lastParsingTaskId.incrementAndGet();
+                        final int eventWindowId = event.getWindowId();
+                        final CharSequence eventPkg = packageName;
+                        final AccessibilityWindowInfo targetWindow = lastWindow;
+
+                        windowExecutor.execute(new Runnable() {
+                            @Override
+                            public void run() {
+                                parseWindow(targetWindow, taskId, eventWindowId, eventPkg);
+                            }
+                        });
                     }
                 }
+            } else if (packageName != null) {
+                handlePackageChanged(packageName.toString());
             }
         }
     }
 
-    private long lastParsingThread = 0;
     // 窗口id缓存（检测到相同的窗口id时，直接读取缓存的packageName，避免重复分析窗口节点获取packageName，降低性能消耗）
     private LruCache<Integer, String> windowIdCaches = new LruCache<Integer, String>(10);
 
-    private class WindowParsingThread extends Thread {
-        private AccessibilityWindowInfo windowInfo;
-        private long tid;
-        private int eventWindowId;
-        private CharSequence eventPackageName;
-        private WindowParsingThread(AccessibilityWindowInfo windowInfo, long tid, int eventWindowId, CharSequence eventPackageName) {
-            this.windowInfo = windowInfo;
-            this.tid = tid;
-            this.eventWindowId = eventWindowId;
-            this.eventPackageName = eventPackageName;
+    private void parseWindow(AccessibilityWindowInfo windowInfo, long taskId, int eventWindowId, CharSequence eventPackageName) {
+        if (taskId != lastParsingTaskId.get() || windowInfo == null) {
+            return;
         }
 
-        @Override
-        public void run() {
-            if (windowInfo != null) {
-                CharSequence packageName;
-                if (eventWindowId == windowInfo.getId() && eventPackageName != null) {
-                    packageName = eventPackageName;
+        try {
+            CharSequence packageName = null;
+            if (eventWindowId == windowInfo.getId() && eventPackageName != null) {
+                packageName = eventPackageName;
+            } else {
+                String cache = windowIdCaches.get(eventWindowId);
+                if (cache != null) {
+                    packageName = cache;
                 } else {
-                    String cache = windowIdCaches.get(eventWindowId);
-                    if (cache != null) {
-                        packageName = cache;
-                    } else {
-                        // 如果当前window锁属的APP处于未响应状态，此过程可能会等待5秒后超时返回null，因此需要在线程中异步进行此操作
-                        AccessibilityNodeInfo root;
-
-                        try {
-                            root = windowInfo.getRoot();
-                        } catch (Exception ex) {
-                            root = null;
+                    AccessibilityNodeInfo root = null;
+                    try {
+                        root = windowInfo.getRoot();
+                        if (root != null) {
+                            CharSequence rootPkg = root.getPackageName();
+                            if (rootPkg != null) {
+                                packageName = rootPkg;
+                                windowIdCaches.put(eventWindowId, rootPkg.toString());
+                            }
                         }
-                        if (root == null) {
-                            return;
-                        }
-                        packageName = root.getPackageName();
-                        if (packageName != null) {
-                            windowIdCaches.put(eventWindowId, packageName.toString());
-                        }
-                    }
-                }
-                if (packageName == null) {
-                    return;
-                }
-
-                String packageNameStr = packageName.toString();
-                // Log.d(">>>>", "To " + packageNameStr);
-                if (lastParsingThread == tid) {
-                    if (!packageNameStr.equals(getPackageName())) {
-                        if (recents.launcherApps.contains(packageNameStr)) {
-                            recents.addRecent(Intent.CATEGORY_HOME);
-                            GlobalState.lastBackHomeTime = System.currentTimeMillis();
-                        } else if (!ignored(packageNameStr) && canOpen(packageNameStr) && !appSwitchBlackList.contains(packageNameStr)) {
-                            recents.addRecent(packageNameStr);
-                            GlobalState.lastBackHomeTime = 0;
-                        }
-                        stopColorPolling();
-                    }
-
-                    // TODO:思考逻辑合理性
-                    if (!(GlobalState.updateBar == null || GlobalState.useBatteryCapacity || packageNameStr.equals("com.android.systemui"))) {
-                        if (!(packageNameStr.equals("android") || packageNameStr.equals("com.omarea.filter"))) {
-                            WhiteBarColor.updateBarColorMultiple();
+                    } catch (Throwable ex) {
+                        // safely ignore DeadObjectException or timeout
+                    } finally {
+                        if (root != null) {
+                            try {
+                                root.recycle();
+                            } catch (Throwable ignored) {}
                         }
                     }
                 }
             }
+
+            if (packageName != null && taskId == lastParsingTaskId.get()) {
+                handlePackageChanged(packageName.toString());
+            }
+        } catch (Throwable t) {
+            Log.e("AccessibilityGesture", "Error parsing window", t);
         }
     }
 
-    private Timer pollingTimer = null;   // 轮询定时器
-    private long lastEventTime = 0;      // 最后一次触发事件的时间
-    private final long pollingTimeout = 10000; // 轮询超时时间
-    private final long pollingInterval = 1000; // 轮询间隔
-    private void startColorPolling() {
-        lastEventTime = System.currentTimeMillis();
-        if (pollingTimer == null) {
-            pollingTimer = new Timer();
-            pollingTimer.scheduleAtFixedRate(new TimerTask() {
-                @Override
-                public void run() {
-                    if (System.currentTimeMillis() - lastEventTime < pollingTimeout) {
-                        WhiteBarColor.updateBarColorMultiple();
-                    } else {
-                        stopColorPolling();
-                    }
-                }
-            }, 0, pollingInterval);
+    private void handlePackageChanged(String packageNameStr) {
+        if (packageNameStr == null || packageNameStr.equals(getPackageName())) {
+            return;
         }
-    }
 
-    private void stopColorPolling() {
-        if (pollingTimer != null) {
-            pollingTimer.cancel();
-            // pollingTimer.purge();
-            pollingTimer = null;
+        try {
+            List<String> launchers = recents.launcherApps;
+            if (launchers != null && launchers.contains(packageNameStr)) {
+                recents.addRecent(Intent.CATEGORY_HOME);
+                GlobalState.lastBackHomeTime = System.currentTimeMillis();
+            } else if (!ignored(packageNameStr) && canOpen(packageNameStr) && (appSwitchBlackList == null || !appSwitchBlackList.contains(packageNameStr))) {
+                recents.addRecent(packageNameStr);
+                GlobalState.lastBackHomeTime = 0;
+            }
+        } catch (Throwable t) {
+            Log.e("AccessibilityGesture", "Error handling package changed", t);
         }
     }
 
@@ -394,29 +387,36 @@ public class AccessibilityServiceGesture extends AccessibilityService {
         }
         createPopupView(false);
 
-        registerReceiver(screenStateReceiver, new IntentFilter(Intent.ACTION_SCREEN_OFF));
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            registerReceiver(screenStateReceiver, new IntentFilter(Intent.ACTION_USER_UNLOCKED));
+        if (screenStateReceiver == null) {
+            screenStateReceiver = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    if (intent == null) return;
+                    String action = intent.getAction();
+                    if (Intent.ACTION_SCREEN_OFF.equals(action)) {
+                        if (modernWhiteBar != null) {
+                            modernWhiteBar.onScreenOff();
+                        }
+                    } else if (Intent.ACTION_SCREEN_ON.equals(action) || Intent.ACTION_USER_PRESENT.equals(action)) {
+                        if (modernWhiteBar != null) {
+                            modernWhiteBar.onScreenOn();
+                        }
+                    }
+                }
+            };
+            IntentFilter screenFilter = new IntentFilter();
+            screenFilter.addAction(Intent.ACTION_SCREEN_OFF);
+            screenFilter.addAction(Intent.ACTION_SCREEN_ON);
+            screenFilter.addAction(Intent.ACTION_USER_PRESENT);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                screenFilter.addAction(Intent.ACTION_USER_UNLOCKED);
+            }
+            registerReceiver(screenStateReceiver, screenFilter);
         }
-        registerReceiver(screenStateReceiver, new IntentFilter(Intent.ACTION_SCREEN_ON));
-        registerReceiver(screenStateReceiver, new IntentFilter(Intent.ACTION_USER_PRESENT));
 
         Collections.addAll(recents.blackList, getResources().getStringArray(R.array.app_switch_black_list));
 
         new AdbProcessExtractor().updateAdbProcessState(this, true);
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                String results = RemoteAPI.getColorPollingApps();
-                if (results != null) {
-                    colorPolingApps = Arrays.asList(results.split("\n"));
-                    Gesture.config.edit().putString("color_polling_apps", results).apply();
-                    setServiceInfo();
-                } else {
-                    colorPolingApps = Arrays.asList(Gesture.config.getString("color_polling_apps", "").split("\n"));
-                }
-            }
-        }).start();
     }
 
     @Override
@@ -439,9 +439,7 @@ public class AccessibilityServiceGesture extends AccessibilityService {
     }
 
     private void createPopupView(boolean delayed) {
-        final AccessibilityServiceGesture context = this;
-
-        new android.os.Handler().postDelayed(new Runnable(){
+        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(new Runnable(){
             @Override
             public void run() {
                 setServiceInfo();
@@ -456,17 +454,19 @@ public class AccessibilityServiceGesture extends AccessibilityService {
     }
 
     private void setServiceInfo() {
-        AccessibilityServiceInfo accessibilityServiceInfo = getServiceInfo();
-        // accessibilityServiceInfo.eventTypes = AccessibilityEvent.TYPE_WINDOWS_CHANGED;
-        // accessibilityServiceInfo.eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED | AccessibilityEvent.TYPE_WINDOWS_CHANGED;
-        if ((!Gesture.config.getBoolean(SpfConfig.LOW_POWER_MODE, SpfConfig.LOW_POWER_MODE_DEFAULT)) && colorPolingApps != null && colorPolingApps.size() > 0) {
-            // accessibilityServiceInfo.eventTypes = AccessibilityEvent.TYPE_WINDOWS_CHANGED | AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
-            accessibilityServiceInfo.eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED | AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED;
-        } else {
-            // accessibilityServiceInfo.eventTypes = AccessibilityEvent.TYPE_WINDOWS_CHANGED;
+        try {
+            AccessibilityServiceInfo accessibilityServiceInfo = getServiceInfo();
+            if (accessibilityServiceInfo == null) {
+                accessibilityServiceInfo = new AccessibilityServiceInfo();
+            }
             accessibilityServiceInfo.eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED;
+            accessibilityServiceInfo.notificationTimeout = 100;
+            accessibilityServiceInfo.feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC;
+            accessibilityServiceInfo.flags |= AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS;
+            setServiceInfo(accessibilityServiceInfo);
+        } catch (Exception e) {
+            Log.e("AccessibilityGesture", "Failed to set service info", e);
         }
-        setServiceInfo(accessibilityServiceInfo);
     }
 
     @Override
@@ -482,20 +482,37 @@ public class AccessibilityServiceGesture extends AccessibilityService {
         }
 
         if (configChanged != null) {
-            unregisterReceiver(configChanged);
+            try {
+                unregisterReceiver(configChanged);
+            } catch (Exception ignored) {}
             configChanged = null;
         }
 
         if (screenStateReceiver != null) {
-            unregisterReceiver(screenStateReceiver);
+            try {
+                unregisterReceiver(screenStateReceiver);
+            } catch (Exception ignored) {}
             screenStateReceiver = null;
         }
 
         if (batteryReceiver != null) {
-            unregisterReceiver(batteryReceiver);
+            try {
+                unregisterReceiver(batteryReceiver);
+            } catch (Exception ignored) {}
             batteryReceiver = null;
         }
-        // stopForeground(true);
+
+        if (serviceDisable != null) {
+            try {
+                unregisterReceiver(serviceDisable);
+            } catch (Exception ignored) {}
+            serviceDisable = null;
+        }
+
+        try {
+            windowExecutor.shutdownNow();
+        } catch (Exception ignored) {}
+
         super.onDestroy();
     }
 }

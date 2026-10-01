@@ -3,18 +3,18 @@ package com.omarea.gesture.util;
 import android.content.Intent;
 
 import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class Recents {
     private final ArrayList<String> recents = new ArrayList<>();
-    // TODO:关闭辅助服务时清理以下数据
     // 已经确保可以打开的应用
-    public ArrayList<String> whiteList = new ArrayList<>();
+    public final List<String> whiteList = new CopyOnWriteArrayList<>();
     // 已经可以肯定不是可以打开的应用
-    public ArrayList<String> blackList = new ArrayList<String>() {
-    };
+    public final List<String> blackList = new CopyOnWriteArrayList<>();
 
-    public ArrayList<String> inputMethods = null;
-    public ArrayList<String> launcherApps = null;
+    public volatile List<String> inputMethods = new CopyOnWriteArrayList<>();
+    public volatile List<String> launcherApps = new CopyOnWriteArrayList<>();
     private int index = -1;
     private String currentTop = "";
 
@@ -22,11 +22,12 @@ public class Recents {
         synchronized (recents) {
             recents.clear();
             currentTop = "";
+            index = -1;
         }
     }
 
     public void addRecent(String packageName) {
-        if (currentTop.equals(packageName)) {
+        if (packageName == null || currentTop.equals(packageName)) {
             return;
         }
 
@@ -36,13 +37,17 @@ public class Recents {
                 recents.remove(searchResult);
             }
 
-            // Intent.CATEGORY_HOME 代步桌面应用，回到桌面时，桌面应该永远应用的后面放
+            // Intent.CATEGORY_HOME 代表桌面应用，回到桌面时，桌面应该永远在应用后面放
             // 因此，在桌面上向后退永远是打开桌面前的上一个应用，而不是上上个应用
             if (searchResult > -1 && !Intent.CATEGORY_HOME.equals(packageName)) {
-                recents.add(index, packageName);
+                if (index >= 0 && index <= recents.size()) {
+                    recents.add(index, packageName);
+                } else {
+                    recents.add(packageName);
+                }
             } else {
                 int indexCurrent = recents.indexOf(currentTop);
-                if (indexCurrent > -1 && indexCurrent + 1 < recents.size()) {
+                if (indexCurrent > -1 && indexCurrent + 1 <= recents.size()) {
                     recents.add(indexCurrent + 1, packageName);
                 } else {
                     recents.add(packageName);
@@ -51,44 +56,15 @@ public class Recents {
 
             index = recents.indexOf(packageName);
             currentTop = packageName;
-
-            StringBuilder packages = new StringBuilder();
-            for (String item : recents) {
-                packages.append(item);
-                packages.append(", ");
-            }
         }
     }
 
     void setRecents(ArrayList<String> items) {
+        if (items == null) return;
         synchronized (recents) {
-            /*
-            if (recents.size() < 4) {
-                recents.clear();
-                for (String packageName : items) {
-                    if (
-                            whiteList.indexOf(packageName) > -1 ||
-                            (blackList.indexOf(packageName) < 0 && ignoreApps.indexOf(packageName) < 0)
-                    ) {
-                        recents.add(packageName);
-                    }
-                }
-                index = recents.indexOf(currentTop);
-            } else {
-                ArrayList<String> lostedItems = new ArrayList<>();
-                for (String recent : recents) {
-                    if (items.indexOf(recent) < 0) {
-                        lostedItems.add(recent);
-                    }
-                }
-                recents.removeAll(lostedItems);
-                index = recents.indexOf(currentTop);
-            }
-            */
-
             ArrayList<String> lostedItems = new ArrayList<>();
             for (String recent : recents) {
-                if (!recent.equals(Intent.CATEGORY_HOME) && items.indexOf(recent) < 0) {
+                if (!recent.equals(Intent.CATEGORY_HOME) && !items.contains(recent)) {
                     lostedItems.add(recent);
                 }
             }
@@ -98,7 +74,9 @@ public class Recents {
     }
 
     public boolean notEmpty() {
-        return this.recents.size() > 1;
+        synchronized (recents) {
+            return this.recents.size() > 1;
+        }
     }
 
     public String getCurrent() {
@@ -106,42 +84,46 @@ public class Recents {
     }
 
     public String moveNext() {
-        String packageName;
+        String packageName = null;
         synchronized (recents) {
-            if (index < recents.size() - 1) {
-                index += 1;
-                packageName = recents.get(index);
-            } else if (recents.size() > 0) {
-                index = 0;
-                packageName = recents.get(0);
-            } else {
-                packageName = null;
+            if (recents.isEmpty()) {
+                return null;
             }
-        }
-        if (Intent.CATEGORY_HOME.equals(packageName) && recents.size() > 1) {
-            return moveNext();
+            int size = recents.size();
+            for (int i = 0; i < size; i++) {
+                if (index < size - 1) {
+                    index += 1;
+                } else {
+                    index = 0;
+                }
+                packageName = recents.get(index);
+                if (!Intent.CATEGORY_HOME.equals(packageName) || size <= 1) {
+                    break;
+                }
+            }
         }
         return packageName;
     }
 
     public String movePrevious() {
-        String packageName;
+        String packageName = null;
         synchronized (recents) {
-            if (index > 0) {
-                index -= 1;
+            if (recents.isEmpty()) {
+                return null;
+            }
+            int size = recents.size();
+            for (int i = 0; i < size; i++) {
+                if (index > 0) {
+                    index -= 1;
+                } else {
+                    index = size - 1;
+                }
                 packageName = recents.get(index);
-            } else if (recents.size() > 0) {
-                int size = recents.size();
-                index = size - 1;
-                packageName = recents.get(index);
-            } else {
-                packageName = null;
+                if (!Intent.CATEGORY_HOME.equals(packageName) || size <= 1) {
+                    break;
+                }
             }
         }
-        if (Intent.CATEGORY_HOME.equals(packageName) && recents.size() > 1) {
-            return movePrevious();
-        }
-
         return packageName;
     }
 }

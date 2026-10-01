@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
-    android:accessibilityEventTypes="typeWindowsChanged|typeWindowStateChanged|typeWindowContentChanged"
+    android:accessibilityEventTypes="typeWindowStateChanged"
     android:accessibilityFeedbackType="feedbackGeneric"
     android:accessibilityFlags="flagRetrieveInteractiveWindows"
     android:canRequestEnhancedWebAccessibility="false"
@@ -8,6 +8,6 @@
     android:canRequestTouchExplorationMode="false"
     android:canRetrieveWindowContent="true"
     android:description="@string/accessibility_keyevent_description"
-    android:notificationTimeout="0"
+    android:notificationTimeout="100"
     android:packageNames="@null"
     android:settingsActivity="com.omarea.gesture.SettingsActivity" />

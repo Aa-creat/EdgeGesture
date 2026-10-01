@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Handler;
+import android.os.Looper;
 import android.os.StrictMode;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
@@ -90,6 +91,29 @@ public class Gesture extends Application {
         StrictMode.setThreadPolicy(policy);
 
         context = this;
+    }
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+
+        final Thread.UncaughtExceptionHandler defaultHandler = Thread.getDefaultUncaughtExceptionHandler();
+        Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
+            @Override
+            public void uncaughtException(Thread thread, Throwable throwable) {
+                android.util.Log.e("EdgeGesture", "Uncaught exception on thread: " + thread.getName(), throwable);
+
+                // 如果是非主线程异常（如后台解析、异步任务等），拦截并不终止主进程，避免无障碍服务被系统杀死导致显示服务异常
+                if (Looper.getMainLooper().getThread() != thread) {
+                    android.util.Log.w("EdgeGesture", "Intercepted background crash to keep AccessibilityService alive.");
+                    return;
+                }
+
+                if (defaultHandler != null) {
+                    defaultHandler.uncaughtException(thread, throwable);
+                }
+            }
+        });
     }
 
     public static enum VibrateMode {

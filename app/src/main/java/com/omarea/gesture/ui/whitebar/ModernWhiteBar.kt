@@ -56,6 +56,7 @@ class ModernWhiteBar(
     private val clickDistanceSlopDp = 12f // 判定为点击的最大位移阈值
     private val swipeDistanceThresholdDp = 35f // 判定为滑动的最小位移阈值
 
+    private var isScreenOn = true
     private var burnInJob: Job? = null
     private var burnInStep = 0
     private val burnInOffsets = listOf(
@@ -95,15 +96,17 @@ class ModernWhiteBar(
 
     private fun setupBurnInProtection(config: WhiteBarConfig) {
         burnInJob?.cancel()
-        if (!config.burnInProtection || !config.enabled) {
+        if (!isScreenOn || !config.burnInProtection || !config.enabled) {
             barView?.setBurnInOffset(0f, 0f)
             return
         }
 
         burnInJob = scope.launch {
             val density = service.resources.displayMetrics.density
-            while (isActive) {
-                kotlinx.coroutines.delay(60_000L) // 每 60 秒平滑微偏移，防止 OLED 烧屏
+            while (isActive && isScreenOn) {
+                delay(60_000L) // 每 60 秒平滑微偏移，防止 OLED 烧屏
+                if (!isActive || !isScreenOn) break
+
                 burnInStep = (burnInStep + 1) % burnInOffsets.size
                 val (targetX, targetY) = burnInOffsets[burnInStep]
                 barView?.let { v ->
@@ -114,6 +117,10 @@ class ModernWhiteBar(
                     ValueAnimator.ofFloat(0f, 1f).apply {
                         duration = 600
                         addUpdateListener { anim ->
+                            if (!isScreenOn) {
+                                cancel()
+                                return@addUpdateListener
+                            }
                             val f = anim.animatedValue as Float
                             v.setBurnInOffset(startX + (endX - startX) * f, startY + (endY - startY) * f)
                         }
@@ -400,8 +407,22 @@ class ModernWhiteBar(
         }
     }
 
+    fun onScreenOff() {
+        isScreenOn = false
+        burnInJob?.cancel()
+        burnInJob = null
+    }
+
+    fun onScreenOn() {
+        if (!isScreenOn) {
+            isScreenOn = true
+            setupBurnInProtection(configRepository.whiteBarConfig.value)
+        }
+    }
+
     fun onDestroy() {
         instance = null
+        isScreenOn = false
         configJob?.cancel()
         burnInJob?.cancel()
         detachView()
