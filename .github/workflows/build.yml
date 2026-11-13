@@ -79,17 +79,24 @@ jobs:
           TAG_NAME="${{ github.ref_name }}"
           cp app/build/outputs/apk/release/app-release.apk "EdgeGesture-${TAG_NAME}.apk"
           cat << 'EOF' > release_notes.md
-          ## EdgeGesture 稳定跃升与全场景保活版
+          ## EdgeGesture 终极保活与无障碍自愈版
 
-          ### 🛡️ 无障碍服务超强稳定性与保活根治
-          - **彻底根治“应用服务异常 (Not working. Tap for info.)”**：
-            1. **清理 IPC 洪流与节点泄露**：移除无节制的 `typeWindowContentChanged` 监听，无障碍事件精简为 `typeWindowStateChanged`（100ms 超时防抖），节点遍历严格在 `finally` 中执行 `recycle()`，彻底杜绝 Binder 缓冲区枯竭；
-            2. **休眠灭屏动画防杀**：修复广播接收器未初始化 Bug，灭屏立即挂起防烧屏微位移与 `ValueAnimator`，杜绝系统（ColorOS Athena / Doze）因休眠后台唤醒误杀进程；
-            3. **并发安全与崩溃熔断**：`Recents` 列表采用线程安全容器与死循环熔断，窗口解析迁移至单线程任务队列，Application 层注入全局异常拦截器，杜绝非主线程崩溃导致服务断联。
+          ### 🛡️ 根治 ColorOS / Android 16 无障碍“应用服务异常”与待机休眠掉线
+          - **前台服务保活提权（Foreground Service）**：
+            1. 接入 Android 14+ / Android 16 (targetSdk 36) `specialUse` 前台服务通道；
+            2. 建立最低优先级静默通知（`IMPORTANCE_MIN`，静音、无震动、自动折叠不打扰），将进程优先级提升至 `FOREGROUND_SERVICE`，彻底免疫 ColorOS Athena 与系统 LMK 待机速冻与清理；
+          - **彻底关闭 `canRetrieveWindowContent` 与 0 Binder 极速响应**：
+            1. 彻底移除 `canRetrieveWindowContent`、`flagRetrieveInteractiveWindows` 及远程窗口节点解析，仅监听原生 `typeWindowStateChanged` 直接读取包名；
+            2. 彻底杜绝跨进程 Binder 阻塞与 5 秒看门狗超时掐断，IPC 耗时降为 0；
+          - **主线程永生守卫（Cockroach Loop Guard）**：
+            1. 在主线程注入 `Looper.loop()` 永不退出守卫，拦截所有偶发 UI 渲染、窗口与触摸异常，确保主进程与无障碍 Binder 永远不灭；
+          - **系统电池白名单与 Shizuku 一键自愈**：
+            1. 基础设置提供一键申请“忽略电池优化 (Ignore Battery Optimizations)”；
+            2. 真实无障碍活性检测，精准识别 `mCrashed` 服务异常状态；集成 Shizuku 一键自愈重启服务与特权写入白名单。
 
           ### 🎨 现代设计与视觉焕新
           - **Material You 自适应图标**：全矢量自适应图标，支持 Android 13+ 桌面动态主题色（Monochrome）、柔和微渐变发光背景与现代手机手势剪影；
-          - **Material Design 3 Expressive (MD3E) 界面**：引入 24dp 表现力大圆角容器、`surfaceContainer` 柔和色阶、顶栏实时服务状态指示药丸（`● 服务已运行` / `▲ 服务未启用`）；
+          - **Material Design 3 Expressive (MD3E) 界面**：引入 24dp 表现力大圆角容器、`surfaceContainer` 柔和色阶、顶栏实时服务状态指示药丸（`● 服务已运行` / `▲ 服务异常` / `▲ 服务未启用`）；
           - **定制手势矢量导航栏**：基础设置、小白条、边缘手势、其它设置专属手势矢量图标；
           - **签名级交互控件**：开关控件全量升级为 MD3 带勾选微动效 Switch。
 
@@ -123,7 +130,7 @@ jobs:
           body_path: release_notes.md
           files: EdgeGesture-*.apk
           draft: false
-          prerelease: false
+          prerelease: true
           generate_release_notes: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

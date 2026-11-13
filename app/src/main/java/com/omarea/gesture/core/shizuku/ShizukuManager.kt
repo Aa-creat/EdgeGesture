@@ -169,6 +169,60 @@ class ShizukuManager private constructor(private val context: Context) {
         return executeShell(cmd).map { }
     }
 
+    /**
+     * 通过 Shizuku 彻底自愈并重新绑定无障碍服务（清除 mCrashed 异常状态）
+     */
+    suspend fun restartAccessibilityService(): Result<Unit> = withContext(Dispatchers.IO) {
+        if (!isAvailable()) {
+            return@withContext Result.failure(IllegalStateException("Shizuku 未授权或未运行"))
+        }
+
+        try {
+            val serviceComp = "${context.packageName}/com.omarea.gesture.ModernGestureService"
+            val getCmd = "settings get secure enabled_accessibility_services"
+            val current = executeShell(getCmd).getOrNull() ?: ""
+            val cleaned = current.split(":")
+                .filter { it.isNotBlank() && !it.contains(context.packageName) }
+                .joinToString(":")
+
+            // 1. 先临时移除本服务，触发系统 AMS 清除 mCrashed 崩溃标记
+            executeShell("settings put secure enabled_accessibility_services \"$cleaned\"")
+            kotlinx.coroutines.delay(200)
+
+            // 2. 重新加入并启用无障碍
+            val restored = if (cleaned.isBlank()) serviceComp else "$cleaned:$serviceComp"
+            executeShell("settings put secure enabled_accessibility_services \"$restored\"")
+            executeShell("settings put secure accessibility_enabled 1")
+
+            // 3. 同时一键配置电池优化白名单与 ColorOS 后台权限
+            grantKeepAlivePermissions()
+
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * 通过 Shizuku 授予 ColorOS / AOSP 电池白名单与后台免杀权限
+     */
+    suspend fun grantKeepAlivePermissions(): Result<Unit> = withContext(Dispatchers.IO) {
+        if (!isAvailable()) {
+            return@withContext Result.failure(IllegalStateException("Shizuku 未授权或未运行"))
+        }
+
+        try {
+            val pkg = context.packageName
+            executeShell("dumpsys deviceidle whitelist +$pkg")
+            executeShell("cmd appops set $pkg RUN_IN_BACKGROUND allow")
+            executeShell("cmd appops set $pkg RUN_ANY_IN_BACKGROUND allow")
+            executeShell("cmd appops set $pkg ACCESS_RESTRICTED_SETTINGS allow")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     fun destroy() {
         try {
             Shizuku.removeBinderReceivedListener(binderReceivedListener)

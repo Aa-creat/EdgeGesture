@@ -12,11 +12,8 @@ import android.content.res.Configuration;
 import android.graphics.Point;
 import android.graphics.Rect;
 import android.os.Build;
-import android.util.LruCache;
 import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
-import android.view.accessibility.AccessibilityNodeInfo;
-import android.view.accessibility.AccessibilityWindowInfo;
 import android.view.inputmethod.InputMethodInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Toast;
@@ -31,9 +28,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicLong;
 import android.util.Log;
 
 public class AccessibilityServiceGesture extends AccessibilityService {
@@ -45,8 +39,6 @@ public class AccessibilityServiceGesture extends AccessibilityService {
     private BroadcastReceiver screenStateReceiver = null;
     private SharedPreferences appSwitchBlackList;
     private BatteryReceiver batteryReceiver;
-    private final ExecutorService windowExecutor = Executors.newSingleThreadExecutor();
-    private final AtomicLong lastParsingTaskId = new AtomicLong(0);
 
     private boolean ignored(String packageName) {
         if (packageName == null) return true;
@@ -121,15 +113,6 @@ public class AccessibilityServiceGesture extends AccessibilityService {
         return inputMethods;
     }
 
-    private long lastOriginEventTime = 0L;
-
-    private ArrayList<Integer> blackTypeList = new ArrayList<Integer>() {{
-        add(AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY);
-        add(AccessibilityWindowInfo.TYPE_INPUT_METHOD);
-        add(AccessibilityWindowInfo.TYPE_SPLIT_SCREEN_DIVIDER);
-        add(AccessibilityWindowInfo.TYPE_SYSTEM);
-    }};
-
     @Override
     public void onAccessibilityEvent(final AccessibilityEvent event) {
         if (event == null) {
@@ -142,137 +125,17 @@ public class AccessibilityServiceGesture extends AccessibilityService {
         }
 
         CharSequence packageName = event.getPackageName();
-        if (packageName != null && "com.omarea.filter".equals(packageName.toString())) {
+        if (packageName == null || "com.omarea.filter".equals(packageName.toString())) {
             return;
         }
 
         int eventType = event.getEventType();
-
-        if (eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED || eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
-            if (GlobalState.testMode && packageName != null && !packageName.toString().equals(getPackageName())) {
+        if (eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            if (GlobalState.testMode && !packageName.toString().equals(getPackageName())) {
                 GlobalState.testMode = false;
                 createPopupView(false);
             }
-            if (Gesture.config.getBoolean(SpfConfig.WINDOW_WATCH, SpfConfig.WINDOW_WATCH_DEFAULT)) {
-                List<AccessibilityWindowInfo> windowInfos = null;
-                try {
-                    windowInfos = getWindows();
-                } catch (Throwable t) {
-                    windowInfos = null;
-                }
-
-                if (windowInfos == null || windowInfos.isEmpty()) {
-                    if (packageName != null) {
-                        handlePackageChanged(packageName.toString());
-                    }
-                    return;
-                }
-
-                AccessibilityWindowInfo lastWindow = null;
-                long t = event.getEventTime();
-                if (lastOriginEventTime != t && t > lastOriginEventTime) {
-                    lastOriginEventTime = t;
-
-                    int lastWindowSize = 0;
-                    ArrayList<AccessibilityWindowInfo> effectiveWindows = new ArrayList<>();
-                    for (AccessibilityWindowInfo windowInfo : windowInfos) {
-                        if (windowInfo != null && !blackTypeList.contains(windowInfo.getType())) {
-                            effectiveWindows.add(windowInfo);
-                        }
-                    }
-
-                    boolean lastWindowFocus = false;
-                    boolean isLandscapf = GlobalState.isLandscapf;
-                    for (AccessibilityWindowInfo windowInfo : effectiveWindows) {
-                        if (isLandscapf) {
-                            Rect outBounds = new Rect();
-                            windowInfo.getBoundsInScreen(outBounds);
-                            int size = (outBounds.right - outBounds.left) * (outBounds.bottom - outBounds.top);
-
-                            if (size >= lastWindowSize) {
-                                lastWindow = windowInfo;
-                                lastWindowSize = size;
-                            }
-                        } else {
-                            boolean windowFocused = (windowInfo.isActive() || windowInfo.isFocused());
-                            if (lastWindowFocus && !windowFocused) {
-                                continue;
-                            }
-                            Rect outBounds = new Rect();
-                            windowInfo.getBoundsInScreen(outBounds);
-                            int size = (outBounds.right - outBounds.left) * (outBounds.bottom - outBounds.top);
-                            if (size >= lastWindowSize || (windowFocused && !lastWindowFocus)) {
-                                lastWindow = windowInfo;
-                                lastWindowSize = size;
-                                lastWindowFocus = windowFocused;
-                            }
-                        }
-                    }
-
-                    if (lastWindow != null) {
-                        final long taskId = lastParsingTaskId.incrementAndGet();
-                        final int eventWindowId = event.getWindowId();
-                        final CharSequence eventPkg = packageName;
-                        final AccessibilityWindowInfo targetWindow = lastWindow;
-
-                        windowExecutor.execute(new Runnable() {
-                            @Override
-                            public void run() {
-                                parseWindow(targetWindow, taskId, eventWindowId, eventPkg);
-                            }
-                        });
-                    }
-                }
-            } else if (packageName != null) {
-                handlePackageChanged(packageName.toString());
-            }
-        }
-    }
-
-    // 窗口id缓存（检测到相同的窗口id时，直接读取缓存的packageName，避免重复分析窗口节点获取packageName，降低性能消耗）
-    private LruCache<Integer, String> windowIdCaches = new LruCache<Integer, String>(10);
-
-    private void parseWindow(AccessibilityWindowInfo windowInfo, long taskId, int eventWindowId, CharSequence eventPackageName) {
-        if (taskId != lastParsingTaskId.get() || windowInfo == null) {
-            return;
-        }
-
-        try {
-            CharSequence packageName = null;
-            if (eventWindowId == windowInfo.getId() && eventPackageName != null) {
-                packageName = eventPackageName;
-            } else {
-                String cache = windowIdCaches.get(eventWindowId);
-                if (cache != null) {
-                    packageName = cache;
-                } else {
-                    AccessibilityNodeInfo root = null;
-                    try {
-                        root = windowInfo.getRoot();
-                        if (root != null) {
-                            CharSequence rootPkg = root.getPackageName();
-                            if (rootPkg != null) {
-                                packageName = rootPkg;
-                                windowIdCaches.put(eventWindowId, rootPkg.toString());
-                            }
-                        }
-                    } catch (Throwable ex) {
-                        // safely ignore DeadObjectException or timeout
-                    } finally {
-                        if (root != null) {
-                            try {
-                                root.recycle();
-                            } catch (Throwable ignored) {}
-                        }
-                    }
-                }
-            }
-
-            if (packageName != null && taskId == lastParsingTaskId.get()) {
-                handlePackageChanged(packageName.toString());
-            }
-        } catch (Throwable t) {
-            Log.e("AccessibilityGesture", "Error parsing window", t);
+            handlePackageChanged(packageName.toString());
         }
     }
 
@@ -442,7 +305,6 @@ public class AccessibilityServiceGesture extends AccessibilityService {
         new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(new Runnable(){
             @Override
             public void run() {
-                setServiceInfo();
                 if (modernWhiteBar != null) {
                     modernWhiteBar.refreshTestMode();
                 }
@@ -462,7 +324,7 @@ public class AccessibilityServiceGesture extends AccessibilityService {
             accessibilityServiceInfo.eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED;
             accessibilityServiceInfo.notificationTimeout = 100;
             accessibilityServiceInfo.feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC;
-            accessibilityServiceInfo.flags |= AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS;
+            accessibilityServiceInfo.flags = 0;
             setServiceInfo(accessibilityServiceInfo);
         } catch (Exception e) {
             Log.e("AccessibilityGesture", "Failed to set service info", e);
@@ -508,10 +370,6 @@ public class AccessibilityServiceGesture extends AccessibilityService {
             } catch (Exception ignored) {}
             serviceDisable = null;
         }
-
-        try {
-            windowExecutor.shutdownNow();
-        } catch (Exception ignored) {}
 
         super.onDestroy();
     }

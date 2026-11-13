@@ -15,7 +15,7 @@ import android.view.View;
 import android.widget.Toast;
 
 public class Gesture extends Application {
-    public static final Handler handler = new Handler();
+    public static final Handler handler = new Handler(Looper.getMainLooper());
     @SuppressLint("StaticFieldLeak")
     public static Context context;
     private static Vibrator vibrator;
@@ -97,21 +97,27 @@ public class Gesture extends Application {
     public void onCreate() {
         super.onCreate();
 
-        final Thread.UncaughtExceptionHandler defaultHandler = Thread.getDefaultUncaughtExceptionHandler();
+        // 1. 主线程永生守卫机制（Cockroach Loop Guard）
+        // 在 MainLooper 中持续循环 loop() 并捕获所有异常，防止主线程因动画、UI 渲染、触摸等偶发异常崩溃导致无障碍连接断开 (mCrashed)
+        new Handler(Looper.getMainLooper()).post(new Runnable() {
+            @Override
+            public void run() {
+                while (true) {
+                    try {
+                        Looper.loop();
+                    } catch (Throwable t) {
+                        android.util.Log.e("EdgeGesture", "Main looper caught uncaught exception to keep process alive: ", t);
+                    }
+                }
+            }
+        });
+
+        // 2. 全局未捕获异常兜底拦截（拦截所有后台线程未捕获异常）
         Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
             @Override
             public void uncaughtException(Thread thread, Throwable throwable) {
                 android.util.Log.e("EdgeGesture", "Uncaught exception on thread: " + thread.getName(), throwable);
-
-                // 如果是非主线程异常（如后台解析、异步任务等），拦截并不终止主进程，避免无障碍服务被系统杀死导致显示服务异常
-                if (Looper.getMainLooper().getThread() != thread) {
-                    android.util.Log.w("EdgeGesture", "Intercepted background crash to keep AccessibilityService alive.");
-                    return;
-                }
-
-                if (defaultHandler != null) {
-                    defaultHandler.uncaughtException(thread, throwable);
-                }
+                android.util.Log.w("EdgeGesture", "Intercepted crash to prevent accessibility disconnection.");
             }
         });
     }

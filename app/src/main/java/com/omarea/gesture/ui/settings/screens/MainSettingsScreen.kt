@@ -40,6 +40,8 @@ import androidx.compose.ui.unit.dp
 import com.omarea.gesture.R
 import com.omarea.gesture.core.config.AppConfigRepository
 import com.omarea.gesture.core.shizuku.ShizukuManager
+import com.omarea.gesture.util.ServiceStateHelper
+import com.omarea.gesture.util.ServiceStatus
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,12 +51,12 @@ fun MainSettingsScreen(
 ) {
     val context = LocalContext.current
     var selectedTab by remember { mutableIntStateOf(0) }
-    var isAccessibilityEnabled by remember { mutableStateOf(checkAccessibilityServiceEnabled(context)) }
+    var serviceStatus by remember { mutableStateOf(ServiceStateHelper.getServiceStatus(context)) }
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
-                isAccessibilityEnabled = checkAccessibilityServiceEnabled(context)
+                serviceStatus = ServiceStateHelper.getServiceStatus(context)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -77,10 +79,10 @@ fun MainSettingsScreen(
                         // MD3E Expressive Service Status Pill
                         Surface(
                             shape = RoundedCornerShape(16.dp),
-                            color = if (isAccessibilityEnabled) {
-                                MaterialTheme.colorScheme.primaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.errorContainer
+                            color = when (serviceStatus) {
+                                ServiceStatus.RUNNING -> MaterialTheme.colorScheme.primaryContainer
+                                ServiceStatus.CRASHED -> MaterialTheme.colorScheme.errorContainer
+                                ServiceStatus.DISABLED -> MaterialTheme.colorScheme.surfaceVariant
                             },
                             modifier = Modifier
                                 .clip(RoundedCornerShape(16.dp))
@@ -96,12 +98,16 @@ fun MainSettingsScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = if (isAccessibilityEnabled) "● 服务已运行" else "▲ 服务未启用",
+                                    text = when (serviceStatus) {
+                                        ServiceStatus.RUNNING -> "● 服务已运行"
+                                        ServiceStatus.CRASHED -> "▲ 服务异常"
+                                        ServiceStatus.DISABLED -> "▲ 服务未启用"
+                                    },
                                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                                    color = if (isAccessibilityEnabled) {
-                                        MaterialTheme.colorScheme.onPrimaryContainer
-                                    } else {
-                                        MaterialTheme.colorScheme.onErrorContainer
+                                    color = when (serviceStatus) {
+                                        ServiceStatus.RUNNING -> MaterialTheme.colorScheme.onPrimaryContainer
+                                        ServiceStatus.CRASHED -> MaterialTheme.colorScheme.onErrorContainer
+                                        ServiceStatus.DISABLED -> MaterialTheme.colorScheme.onSurfaceVariant
                                     }
                                 )
                             }
@@ -160,13 +166,4 @@ fun MainSettingsScreen(
             }
         }
     }
-}
-
-private fun checkAccessibilityServiceEnabled(context: Context): Boolean {
-    val serviceName = "${context.packageName}/com.omarea.gesture.ModernGestureService"
-    val enabledServices = Settings.Secure.getString(
-        context.contentResolver,
-        Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
-    ) ?: return false
-    return enabledServices.contains(serviceName)
 }
